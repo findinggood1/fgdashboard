@@ -63,6 +63,13 @@ export interface Superpower {
   created_at?: string;
 }
 
+export interface WorldAskingInsight {
+  insight: string;
+  fires_element: 'feelings' | 'influence' | 'resilience' | 'ethics' | 'strengths';
+  source?: 'AI' | 'Coach' | 'Client';
+  created_at?: string;
+}
+
 export interface CoachingEngagement {
   id: string;
   client_email: string;
@@ -81,6 +88,7 @@ export interface CoachingEngagement {
   superpowers_claimed: Superpower[] | null;
   superpowers_emerging: Superpower[] | null;
   superpowers_hidden: Superpower[] | null;
+  world_asking: WorldAskingInsight[] | null;
   ai_insights_generated_at: string | null;
   created_at: string;
 }
