@@ -44,6 +44,16 @@ export interface Event {
   created_at: string;
 }
 
+export interface ZoneInterpretation {
+  zone?: string;
+  headline?: string;
+  description?: string;
+  the_work?: string;
+  custom_note?: string;
+  source?: string;
+  updated_at?: string;
+}
+
 export interface CoachingEngagement {
   id: string;
   client_email: string;
@@ -58,5 +68,7 @@ export interface CoachingEngagement {
   goals: any;
   challenges: any;
   fires_focus: any;
+  zone_interpretation: ZoneInterpretation | null;
+  ai_insights_generated_at: string | null;
   created_at: string;
 }

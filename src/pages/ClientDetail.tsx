@@ -125,7 +125,7 @@ export default function ClientDetail() {
         <TabsContent value="files"><FilesTab files={files} /></TabsContent>
         <TabsContent value="moreless"><MoreLessTab markers={markers} /></TabsContent>
         <TabsContent value="notes"><NotesTab notes={notes} /></TabsContent>
-        <TabsContent value="narrative-map"><NarrativeMapTab engagement={engagement} refetch={refetch} /></TabsContent>
+        <TabsContent value="narrative-map"><NarrativeMapTab engagement={engagement} clientName={client?.name} latestSnapshot={latestSnapshot} refetch={refetch} /></TabsContent>
       </Tabs>
     </div>
   );
