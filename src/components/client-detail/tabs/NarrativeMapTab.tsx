@@ -831,10 +831,12 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {(engagement?.world_asking && engagement.world_asking.length > 0) ? (
+          {(engagement?.world_asking && Array.isArray(engagement.world_asking) && engagement.world_asking.length > 0) ? (
             <div className="space-y-3">
               {engagement.world_asking.map((item, idx) => {
-                const firesStyle = firesColors[item.fires_element] || firesColors.strengths;
+                if (!item) return null;
+                const firesElement = item?.fires_element || 'strengths';
+                const firesStyle = firesColors[firesElement] || firesColors.strengths;
                 return (
                   <div 
                     key={idx} 
@@ -844,12 +846,12 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
                       {idx + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-foreground">{item.insight}</p>
+                      <p className="text-foreground">{item?.insight || 'No insight text'}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant="outline" className={`${firesStyle.bg} ${firesStyle.text} capitalize text-xs`}>
-                          {item.fires_element}
+                          {firesElement}
                         </Badge>
-                        {item.source && (
+                        {item?.source && (
                           <Badge variant="secondary" className="text-xs text-muted-foreground">
                             {item.source}
                           </Badge>
@@ -1086,7 +1088,7 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
             </Button>
             <Button 
               onClick={handleSaveInsight} 
-              disabled={isSavingInsight || !insightForm.insight.trim()}
+              disabled={isSavingInsight || !(insightForm.insight?.trim())}
             >
               {isSavingInsight ? (
                 <>
