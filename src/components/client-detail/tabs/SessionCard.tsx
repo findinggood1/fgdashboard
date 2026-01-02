@@ -52,42 +52,22 @@ export function SessionCard({ session, onViewTranscript, onRefresh }: SessionCar
 
     setIsGenerating(true);
     
-    // Mock AI generation - simulate 2 second delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate mock summary based on transcript length
-    const mockSummary = `This coaching session focused on key themes related to the client's professional development and personal growth. The discussion covered strategies for improving influence and building stronger relationships with stakeholders. Several actionable next steps were identified.`;
-    
-    const mockThemes = ['Leadership Development', 'Stakeholder Management', 'Communication Skills', 'Goal Setting'];
-    
-    const mockQuotes = [
-      { quote: 'I realized I need to be more intentional about how I show up.', context: 'Discussing self-awareness' },
-      { quote: 'The feedback I received was hard to hear but valuable.', context: 'Reflecting on recent experiences' },
-    ];
-    
-    const mockActions = [
-      { item: 'Schedule 1:1 with direct reports', owner: 'client', status: 'pending' },
-      { item: 'Review leadership assessment results', owner: 'client', status: 'pending' },
-      { item: 'Share resources on influence strategies', owner: 'coach', status: 'pending' },
-    ];
-
     try {
-      const { error } = await supabase
-        .from('session_transcripts')
-        .update({
-          summary: mockSummary,
-          key_themes: mockThemes,
-          key_quotes: mockQuotes,
-          action_items: mockActions,
-          is_processed: true,
-          processed_at: new Date().toISOString(),
-        })
-        .eq('id', session.id);
-
+      const { data, error } = await supabase.functions.invoke('summarize-session', {
+        body: { 
+          sessionId: session.id, 
+          transcript: session.transcript_text 
+        }
+      });
+      
       if (error) throw error;
+      
+      // The Edge Function already updates the database
+      // data contains: summary, key_themes, key_quotes, action_items, coach_observations, client_breakthroughs, next_session_focus
       
       toast.success('Summary generated successfully');
       onRefresh();
+      
     } catch (err) {
       console.error('Error generating summary:', err);
       toast.error('Failed to generate summary');
