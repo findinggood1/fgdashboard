@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2 } from 'lucide-react';
-import { supabase, ZoneInterpretation } from '@/lib/supabase';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Sparkles, Loader2, ChevronDown, Flame, Sprout } from 'lucide-react';
+import { supabase, ZoneInterpretation, Superpower } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Snapshot } from '@/hooks/useClientDetail';
@@ -26,10 +27,101 @@ interface NarrativeMapTabProps {
     story_past?: string | null;
     story_potential?: string | null;
     zone_interpretation?: ZoneInterpretation | null;
+    superpowers_claimed?: Superpower[] | null;
+    superpowers_emerging?: Superpower[] | null;
+    superpowers_hidden?: Superpower[] | null;
   } | null;
   clientName?: string;
   latestSnapshot?: Snapshot | null;
   refetch: () => void;
+}
+
+const firesColors: Record<string, { bg: string; text: string }> = {
+  feelings: { bg: 'bg-rose-500/10', text: 'text-rose-600' },
+  influence: { bg: 'bg-violet-500/10', text: 'text-violet-600' },
+  resilience: { bg: 'bg-amber-500/10', text: 'text-amber-600' },
+  ethics: { bg: 'bg-emerald-500/10', text: 'text-emerald-600' },
+  strengths: { bg: 'bg-blue-500/10', text: 'text-blue-600' },
+};
+
+function SuperpowerCard({ superpower }: { superpower: Superpower }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const firesStyle = firesColors[superpower.fires_element] || firesColors.strengths;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between p-3 bg-background rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">{superpower.superpower}</span>
+            <Badge variant="outline" className={`${firesStyle.bg} ${firesStyle.text} capitalize text-xs`}>
+              {superpower.fires_element}
+            </Badge>
+            {superpower.source && (
+              <Badge variant="secondary" className="text-xs text-muted-foreground">
+                {superpower.source}
+              </Badge>
+            )}
+          </div>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-3 pb-3">
+        <div className="pt-3 space-y-2 border-l-2 border-primary/20 pl-4 ml-2">
+          <p className="text-sm text-foreground">{superpower.description}</p>
+          {superpower.evidence && superpower.evidence.length > 0 && (
+            <ul className="text-sm text-muted-foreground space-y-1">
+              {superpower.evidence.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2">
+                  <span className="text-primary mt-1">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function SuperpowersSection({ 
+  title, 
+  icon, 
+  subtitle, 
+  superpowers, 
+  emptyLabel 
+}: { 
+  title: string; 
+  icon: React.ReactNode; 
+  subtitle: string; 
+  superpowers: Superpower[] | null | undefined; 
+  emptyLabel: string;
+}) {
+  const items = superpowers || [];
+  
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <div>
+          <h4 className="font-semibold text-sm">{title}</h4>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      {items.length > 0 ? (
+        <div className="space-y-2">
+          {items.map((sp, idx) => (
+            <SuperpowerCard key={idx} superpower={sp} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground italic py-2">
+          No {emptyLabel} superpowers yet. Click Generate Insights or add manually.
+        </p>
+      )}
+    </div>
+  );
 }
 
 const zoneColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -311,22 +403,56 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         </CardContent>
       </Card>
 
+      {/* Your FIRES Superpowers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Flame className="h-5 w-5 text-orange-500" />
+            Your FIRES Superpowers
+          </CardTitle>
+          <CardDescription>
+            Strengths identified through coaching sessions and AI analysis
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <SuperpowersSection
+            title="SUPERPOWERS CLAIMED"
+            icon={<span className="text-lg">🔥</span>}
+            subtitle="What you know and own"
+            superpowers={engagement?.superpowers_claimed}
+            emptyLabel="claimed"
+          />
+          
+          <SuperpowersSection
+            title="SUPERPOWERS EMERGING"
+            icon={<span className="text-lg">🌱</span>}
+            subtitle="What you're building confidence in"
+            superpowers={engagement?.superpowers_emerging}
+            emptyLabel="emerging"
+          />
+          
+          <SuperpowersSection
+            title="SUPERPOWERS HIDDEN"
+            icon={<span className="text-lg">✨</span>}
+            subtitle="What's in the data but unclaimed"
+            superpowers={engagement?.superpowers_hidden}
+            emptyLabel="hidden"
+          />
+        </CardContent>
+      </Card>
+
       {/* Generate Insights Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Narrative Integrity Map
+            AI Insights
           </CardTitle>
           <CardDescription>
-            AI-generated insights into superpowers, zone interpretation, and weekly actions
+            Generate AI-powered analysis of client data
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground text-center py-4">
-            Coming Soon — Full Narrative Integrity Map visualization
-          </p>
-          
+        <CardContent>
           <div className="flex flex-col items-center gap-2">
             <Button 
               onClick={handleGenerateInsights} 
