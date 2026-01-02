@@ -17,3 +17,6 @@ port = 54323
 
 [functions.coaching-chat]
 verify_jwt = false
+
+[functions.generate-narrative-map]
+verify_jwt = false
