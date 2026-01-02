@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function ClientDetail() {
   const { email } = useParams<{ email: string }>();
   const { toast } = useToast();
-  const { client, engagement, snapshots, impactVerifications, sessions, markers, notes, files, loading, updateEngagement } = useClientDetail(email);
+  const { client, engagement, snapshots, impactVerifications, sessions, markers, notes, files, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
 
   const latestSnapshot = snapshots[0] || null;
@@ -110,7 +110,14 @@ export default function ClientDetail() {
           <RecentActivity activities={recentActivities} />
         </TabsContent>
 
-        <TabsContent value="sessions"><SessionsTab sessions={sessions} /></TabsContent>
+        <TabsContent value="sessions">
+          <SessionsTab 
+            sessions={sessions} 
+            clientEmail={client?.email || ''} 
+            engagementId={engagement?.id}
+            onRefresh={refetch}
+          />
+        </TabsContent>
         <TabsContent value="snapshots"><SnapshotsTab snapshots={snapshots} /></TabsContent>
         <TabsContent value="impact"><ImpactTab impacts={impactVerifications} /></TabsContent>
         <TabsContent value="files"><FilesTab files={files} /></TabsContent>
