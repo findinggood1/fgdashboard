@@ -18,6 +18,7 @@ import { ImpactTab } from '@/components/client-detail/tabs/ImpactTab';
 import { FilesTab } from '@/components/client-detail/tabs/FilesTab';
 import { MoreLessTab } from '@/components/client-detail/tabs/MoreLessTab';
 import { NotesTab } from '@/components/client-detail/tabs/NotesTab';
+import { NarrativeMapTab } from '@/components/client-detail/tabs/NarrativeMapTab';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ClientDetail() {
@@ -100,6 +101,7 @@ export default function ClientDetail() {
           <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="moreless">More/Less</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="narrative-map">Narrative Map</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
@@ -123,6 +125,7 @@ export default function ClientDetail() {
         <TabsContent value="files"><FilesTab files={files} /></TabsContent>
         <TabsContent value="moreless"><MoreLessTab markers={markers} /></TabsContent>
         <TabsContent value="notes"><NotesTab notes={notes} /></TabsContent>
+        <TabsContent value="narrative-map"><NarrativeMapTab /></TabsContent>
       </Tabs>
     </div>
   );
