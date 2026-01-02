@@ -54,6 +54,14 @@ export interface ZoneInterpretation {
   updated_at?: string;
 }
 
+export interface Superpower {
+  superpower: string;
+  description: string;
+  evidence: string[];
+  fires_element: 'feelings' | 'influence' | 'resilience' | 'ethics' | 'strengths';
+  source?: 'AI' | 'Coach' | 'Client';
+}
+
 export interface CoachingEngagement {
   id: string;
   client_email: string;
@@ -69,6 +77,9 @@ export interface CoachingEngagement {
   challenges: any;
   fires_focus: any;
   zone_interpretation: ZoneInterpretation | null;
+  superpowers_claimed: Superpower[] | null;
+  superpowers_emerging: Superpower[] | null;
+  superpowers_hidden: Superpower[] | null;
   ai_insights_generated_at: string | null;
   created_at: string;
 }
