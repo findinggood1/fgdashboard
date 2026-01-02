@@ -50,6 +50,7 @@ export default function Chat() {
     setInput('');
     
     // Add user message to conversation
+    const conversationHistory = messages.map(m => ({ role: m.role, content: m.content }));
     setMessages(prev => [...prev, { 
       id: Date.now().toString(), 
       role: 'user', 
@@ -57,31 +58,48 @@ export default function Chat() {
     }]);
     setIsLoading(true);
 
+    console.log('Sending message:', { 
+      clientEmail: selectedClient?.email || null, 
+      message: userMessage, 
+      conversationHistory 
+    });
+
     try {
       const { data, error } = await supabase.functions.invoke('coaching-chat', {
         body: { 
           clientEmail: selectedClient?.email || null,
           message: userMessage,
-          conversationHistory: messages.map(m => ({ role: m.role, content: m.content }))
+          conversationHistory
         }
       });
 
-      if (error) throw error;
+      console.log('Response:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
 
       // Add AI response to conversation
       setMessages(prev => [...prev, { 
         id: (Date.now() + 1).toString(),
         role: 'assistant', 
-        content: data.response 
+        content: data.response || data.reply || 'No response received'
       }]);
 
-    } catch (err) {
-      console.error('Error calling AI:', err);
-      toast.error('Failed to get AI response');
+    } catch (err: any) {
+      console.error('Full chat error:', err);
+      const errorMessage = err?.message || JSON.stringify(err) || 'Unknown error';
+      toast.error(`Chat error: ${errorMessage}`);
       setMessages(prev => [...prev, { 
         id: (Date.now() + 1).toString(),
         role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
+        content: `Debug: ${errorMessage}`
       }]);
     } finally {
       setIsLoading(false);
