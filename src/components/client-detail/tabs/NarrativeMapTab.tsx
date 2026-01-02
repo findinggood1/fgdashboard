@@ -3,8 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Sparkles, Loader2, ChevronDown, Flame, Sprout } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Sparkles, Loader2, ChevronDown, Flame, Pencil, X, Plus } from 'lucide-react';
 import { supabase, ZoneInterpretation, Superpower } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -16,6 +22,16 @@ interface ZoneDefault {
   headline: string;
   description: string;
   the_work: string;
+}
+
+type SuperpowerCategory = 'claimed' | 'emerging' | 'hidden';
+
+interface SuperpowerFormData {
+  superpower: string;
+  description: string;
+  evidence: string;
+  fires_element: string;
+  category: SuperpowerCategory;
 }
 
 interface NarrativeMapTabProps {
@@ -44,7 +60,23 @@ const firesColors: Record<string, { bg: string; text: string }> = {
   strengths: { bg: 'bg-blue-500/10', text: 'text-blue-600' },
 };
 
-function SuperpowerCard({ superpower }: { superpower: Superpower }) {
+const firesElements = [
+  { value: 'feelings', label: 'Feelings' },
+  { value: 'influence', label: 'Influence' },
+  { value: 'resilience', label: 'Resilience' },
+  { value: 'ethics', label: 'Ethics' },
+  { value: 'strengths', label: 'Strengths' },
+];
+
+function SuperpowerCard({ 
+  superpower, 
+  onEdit, 
+  onDelete 
+}: { 
+  superpower: Superpower; 
+  onEdit: () => void; 
+  onDelete: () => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const firesStyle = firesColors[superpower.fires_element] || firesColors.strengths;
 
@@ -63,7 +95,31 @@ function SuperpowerCard({ superpower }: { superpower: Superpower }) {
               </Badge>
             )}
           </div>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </div>
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent className="px-3 pb-3">
@@ -89,14 +145,22 @@ function SuperpowersSection({
   title, 
   icon, 
   subtitle, 
-  superpowers, 
-  emptyLabel 
+  superpowers,
+  category,
+  emptyLabel,
+  onAdd,
+  onEdit,
+  onDelete,
 }: { 
   title: string; 
   icon: React.ReactNode; 
   subtitle: string; 
-  superpowers: Superpower[] | null | undefined; 
+  superpowers: Superpower[] | null | undefined;
+  category: SuperpowerCategory;
   emptyLabel: string;
+  onAdd: (category: SuperpowerCategory) => void;
+  onEdit: (superpower: Superpower, index: number, category: SuperpowerCategory) => void;
+  onDelete: (index: number, category: SuperpowerCategory) => void;
 }) {
   const items = superpowers || [];
   
@@ -112,7 +176,12 @@ function SuperpowersSection({
       {items.length > 0 ? (
         <div className="space-y-2">
           {items.map((sp, idx) => (
-            <SuperpowerCard key={idx} superpower={sp} />
+            <SuperpowerCard 
+              key={idx} 
+              superpower={sp} 
+              onEdit={() => onEdit(sp, idx, category)}
+              onDelete={() => onDelete(idx, category)}
+            />
           ))}
         </div>
       ) : (
@@ -120,6 +189,15 @@ function SuperpowersSection({
           No {emptyLabel} superpowers yet. Click Generate Insights or add manually.
         </p>
       )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1"
+        onClick={() => onAdd(category)}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add Superpower
+      </Button>
     </div>
   );
 }
@@ -140,6 +218,24 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
   const [saving, setSaving] = useState<string | null>(null);
   const [zoneDefaults, setZoneDefaults] = useState<ZoneDefault[]>([]);
   const { toast } = useToast();
+
+  // Superpower modal state
+  const [isSuperpowerModalOpen, setIsSuperpowerModalOpen] = useState(false);
+  const [editingSuperpowerIndex, setEditingSuperpowerIndex] = useState<number | null>(null);
+  const [editingCategory, setEditingCategory] = useState<SuperpowerCategory>('claimed');
+  const [superpowerForm, setSuperpowerForm] = useState<SuperpowerFormData>({
+    superpower: '',
+    description: '',
+    evidence: '',
+    fires_element: 'strengths',
+    category: 'claimed',
+  });
+  const [isSavingSuperpower, setIsSavingSuperpower] = useState(false);
+  
+  // Delete confirmation state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<SuperpowerCategory>('claimed');
 
   const hasActiveEngagement = engagement?.status === 'active';
 
@@ -268,6 +364,160 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Superpower handlers
+  const handleAddSuperpower = (category: SuperpowerCategory) => {
+    setEditingSuperpowerIndex(null);
+    setEditingCategory(category);
+    setSuperpowerForm({
+      superpower: '',
+      description: '',
+      evidence: '',
+      fires_element: 'strengths',
+      category,
+    });
+    setIsSuperpowerModalOpen(true);
+  };
+
+  const handleEditSuperpower = (superpower: Superpower, index: number, category: SuperpowerCategory) => {
+    setEditingSuperpowerIndex(index);
+    setEditingCategory(category);
+    setSuperpowerForm({
+      superpower: superpower.superpower,
+      description: superpower.description || '',
+      evidence: superpower.evidence?.join('\n') || '',
+      fires_element: superpower.fires_element,
+      category,
+    });
+    setIsSuperpowerModalOpen(true);
+  };
+
+  const handleDeleteSuperpowerClick = (index: number, category: SuperpowerCategory) => {
+    setDeletingIndex(index);
+    setDeletingCategory(category);
+    setDeleteConfirmOpen(true);
+  };
+
+  const getSuperpowerArrayField = (category: SuperpowerCategory) => {
+    switch (category) {
+      case 'claimed': return 'superpowers_claimed';
+      case 'emerging': return 'superpowers_emerging';
+      case 'hidden': return 'superpowers_hidden';
+    }
+  };
+
+  const getSuperpowerArray = (category: SuperpowerCategory): Superpower[] => {
+    switch (category) {
+      case 'claimed': return engagement?.superpowers_claimed || [];
+      case 'emerging': return engagement?.superpowers_emerging || [];
+      case 'hidden': return engagement?.superpowers_hidden || [];
+    }
+  };
+
+  const handleSaveSuperpower = async () => {
+    if (!engagement?.id || !superpowerForm.superpower.trim()) return;
+
+    setIsSavingSuperpower(true);
+    try {
+      const evidenceArray = superpowerForm.evidence
+        .split('\n')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
+      const newSuperpower: Superpower = {
+        superpower: superpowerForm.superpower.trim(),
+        description: superpowerForm.description.trim(),
+        evidence: evidenceArray,
+        fires_element: superpowerForm.fires_element as Superpower['fires_element'],
+        source: 'Coach',
+        created_at: new Date().toISOString(),
+      };
+
+      // Get current arrays
+      const targetArray = [...getSuperpowerArray(superpowerForm.category)];
+      
+      if (editingSuperpowerIndex !== null) {
+        // Editing existing - check if category changed
+        const originalArray = [...getSuperpowerArray(editingCategory)];
+        
+        if (editingCategory === superpowerForm.category) {
+          // Same category - update in place
+          targetArray[editingSuperpowerIndex] = newSuperpower;
+          
+          const { error } = await supabase
+            .from('coaching_engagements')
+            .update({ [getSuperpowerArrayField(superpowerForm.category)]: targetArray })
+            .eq('id', engagement.id);
+          
+          if (error) throw error;
+        } else {
+          // Category changed - remove from old, add to new
+          originalArray.splice(editingSuperpowerIndex, 1);
+          targetArray.push(newSuperpower);
+          
+          const { error } = await supabase
+            .from('coaching_engagements')
+            .update({
+              [getSuperpowerArrayField(editingCategory)]: originalArray,
+              [getSuperpowerArrayField(superpowerForm.category)]: targetArray,
+            })
+            .eq('id', engagement.id);
+          
+          if (error) throw error;
+        }
+      } else {
+        // Adding new
+        targetArray.push(newSuperpower);
+        
+        const { error } = await supabase
+          .from('coaching_engagements')
+          .update({ [getSuperpowerArrayField(superpowerForm.category)]: targetArray })
+          .eq('id', engagement.id);
+        
+        if (error) throw error;
+      }
+
+      toast({ title: 'Superpower saved!' });
+      setIsSuperpowerModalOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Error saving superpower:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save the superpower. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingSuperpower(false);
+    }
+  };
+
+  const handleDeleteSuperpower = async () => {
+    if (!engagement?.id || deletingIndex === null) return;
+
+    try {
+      const targetArray = [...getSuperpowerArray(deletingCategory)];
+      targetArray.splice(deletingIndex, 1);
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ [getSuperpowerArrayField(deletingCategory)]: targetArray })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Superpower removed' });
+      setDeleteConfirmOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting superpower:', error);
+      toast({
+        title: 'Failed to delete',
+        description: 'Could not remove the superpower. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -420,7 +670,11 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
             icon={<span className="text-lg">🔥</span>}
             subtitle="What you know and own"
             superpowers={engagement?.superpowers_claimed}
+            category="claimed"
             emptyLabel="claimed"
+            onAdd={handleAddSuperpower}
+            onEdit={handleEditSuperpower}
+            onDelete={handleDeleteSuperpowerClick}
           />
           
           <SuperpowersSection
@@ -428,7 +682,11 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
             icon={<span className="text-lg">🌱</span>}
             subtitle="What you're building confidence in"
             superpowers={engagement?.superpowers_emerging}
+            category="emerging"
             emptyLabel="emerging"
+            onAdd={handleAddSuperpower}
+            onEdit={handleEditSuperpower}
+            onDelete={handleDeleteSuperpowerClick}
           />
           
           <SuperpowersSection
@@ -436,7 +694,11 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
             icon={<span className="text-lg">✨</span>}
             subtitle="What's in the data but unclaimed"
             superpowers={engagement?.superpowers_hidden}
+            category="hidden"
             emptyLabel="hidden"
+            onAdd={handleAddSuperpower}
+            onEdit={handleEditSuperpower}
+            onDelete={handleDeleteSuperpowerClick}
           />
         </CardContent>
       </Card>
@@ -479,6 +741,128 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
           </div>
         </CardContent>
       </Card>
+
+      {/* Superpower Edit Modal */}
+      <Dialog open={isSuperpowerModalOpen} onOpenChange={setIsSuperpowerModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSuperpowerIndex !== null ? 'Edit Superpower' : 'Add Superpower'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingSuperpowerIndex !== null 
+                ? 'Update this superpower details.' 
+                : 'Add a new superpower to the client\'s profile.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="superpower-name">Name</Label>
+              <Input
+                id="superpower-name"
+                value={superpowerForm.superpower}
+                onChange={(e) => setSuperpowerForm(prev => ({ ...prev, superpower: e.target.value }))}
+                placeholder="e.g., Strategic Thinking"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="superpower-description">Description</Label>
+              <Textarea
+                id="superpower-description"
+                value={superpowerForm.description}
+                onChange={(e) => setSuperpowerForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe this superpower..."
+                className="min-h-[80px]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="superpower-evidence">Evidence (one item per line)</Label>
+              <Textarea
+                id="superpower-evidence"
+                value={superpowerForm.evidence}
+                onChange={(e) => setSuperpowerForm(prev => ({ ...prev, evidence: e.target.value }))}
+                placeholder="Session 3: demonstrated clear planning ability&#10;Handled crisis with calm approach"
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>FIRES Element</Label>
+              <Select
+                value={superpowerForm.fires_element}
+                onValueChange={(value) => setSuperpowerForm(prev => ({ ...prev, fires_element: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select element" />
+                </SelectTrigger>
+                <SelectContent>
+                  {firesElements.map(el => (
+                    <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <RadioGroup
+                value={superpowerForm.category}
+                onValueChange={(value: SuperpowerCategory) => setSuperpowerForm(prev => ({ ...prev, category: value }))}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="claimed" id="cat-claimed" />
+                  <Label htmlFor="cat-claimed" className="cursor-pointer">Claimed</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="emerging" id="cat-emerging" />
+                  <Label htmlFor="cat-emerging" className="cursor-pointer">Emerging</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="hidden" id="cat-hidden" />
+                  <Label htmlFor="cat-hidden" className="cursor-pointer">Hidden</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSuperpowerModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveSuperpower} 
+              disabled={isSavingSuperpower || !superpowerForm.superpower.trim()}
+            >
+              {isSavingSuperpower ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this superpower?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The superpower will be permanently removed from this client's profile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSuperpower}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

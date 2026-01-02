@@ -60,6 +60,7 @@ export interface Superpower {
   evidence: string[];
   fires_element: 'feelings' | 'influence' | 'resilience' | 'ethics' | 'strengths';
   source?: 'AI' | 'Coach' | 'Client';
+  created_at?: string;
 }
 
 export interface CoachingEngagement {
