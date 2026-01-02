@@ -2,10 +2,20 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, ZoneInterpretation } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { Snapshot } from '@/hooks/useClientDetail';
+
+interface ZoneDefault {
+  id: string;
+  zone_name: string;
+  headline: string;
+  description: string;
+  the_work: string;
+}
 
 interface NarrativeMapTabProps {
   engagement: {
@@ -15,25 +25,59 @@ interface NarrativeMapTabProps {
     story_present?: string | null;
     story_past?: string | null;
     story_potential?: string | null;
+    zone_interpretation?: ZoneInterpretation | null;
   } | null;
+  clientName?: string;
+  latestSnapshot?: Snapshot | null;
   refetch: () => void;
 }
 
-export function NarrativeMapTab({ engagement, refetch }: NarrativeMapTabProps) {
+const zoneColors: Record<string, { bg: string; text: string; border: string }> = {
+  exploring: { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-muted-foreground/30' },
+  discovering: { bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-500/30' },
+  performing: { bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-500/30' },
+  owning: { bg: 'bg-green-500/10', text: 'text-green-600', border: 'border-green-500/30' },
+};
+
+export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetch }: NarrativeMapTabProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [storyPresent, setStoryPresent] = useState(engagement?.story_present || '');
   const [storyPast, setStoryPast] = useState(engagement?.story_past || '');
   const [storyPotential, setStoryPotential] = useState(engagement?.story_potential || '');
+  const [customNote, setCustomNote] = useState(engagement?.zone_interpretation?.custom_note || '');
   const [saving, setSaving] = useState<string | null>(null);
+  const [zoneDefaults, setZoneDefaults] = useState<ZoneDefault[]>([]);
   const { toast } = useToast();
 
   const hasActiveEngagement = engagement?.status === 'active';
+
+  // Fetch zone defaults
+  useEffect(() => {
+    async function fetchZoneDefaults() {
+      const { data, error } = await supabase
+        .from('zone_defaults')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching zone defaults:', error);
+        return;
+      }
+      setZoneDefaults(data || []);
+    }
+    fetchZoneDefaults();
+  }, []);
 
   useEffect(() => {
     setStoryPresent(engagement?.story_present || '');
     setStoryPast(engagement?.story_past || '');
     setStoryPotential(engagement?.story_potential || '');
-  }, [engagement?.story_present, engagement?.story_past, engagement?.story_potential]);
+    setCustomNote(engagement?.zone_interpretation?.custom_note || '');
+  }, [engagement?.story_present, engagement?.story_past, engagement?.story_potential, engagement?.zone_interpretation?.custom_note]);
+
+  // Determine current zone from snapshot or zone_interpretation
+  const currentZone = (latestSnapshot?.overall_zone?.toLowerCase() || engagement?.zone_interpretation?.zone || 'exploring') as string;
+  const zoneDefault = zoneDefaults.find(z => z.zone_name === currentZone);
+  const zoneStyle = zoneColors[currentZone] || zoneColors.exploring;
 
   const handleSaveStory = async (field: 'story_present' | 'story_past' | 'story_potential', value: string) => {
     if (!engagement?.id) return;
@@ -55,6 +99,39 @@ export function NarrativeMapTab({ engagement, refetch }: NarrativeMapTabProps) {
       refetch();
     } catch (error) {
       console.error('Error saving story:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save your changes. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleSaveCustomNote = async () => {
+    if (!engagement?.id) return;
+    
+    const originalNote = engagement?.zone_interpretation?.custom_note || '';
+    if (customNote === originalNote) return;
+
+    setSaving('custom_note');
+    try {
+      const updatedZoneInterpretation: ZoneInterpretation = {
+        ...(engagement.zone_interpretation || {}),
+        custom_note: customNote,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ zone_interpretation: updatedZoneInterpretation })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+      refetch();
+    } catch (error) {
+      console.error('Error saving custom note:', error);
       toast({
         title: 'Failed to save',
         description: 'Could not save your changes. Please try again.',
@@ -184,6 +261,52 @@ export function NarrativeMapTab({ engagement, refetch }: NarrativeMapTabProps) {
                 <p className="text-xs text-muted-foreground mt-1">Saving...</p>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Current Position */}
+      <Card className={`${zoneStyle.bg} ${zoneStyle.border} border`}>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <CardTitle className={`text-2xl font-bold uppercase ${zoneStyle.text}`}>
+              {currentZone.toUpperCase()}
+            </CardTitle>
+            {zoneDefault?.headline && (
+              <Badge variant="outline" className={`${zoneStyle.text} ${zoneStyle.border} w-fit`}>
+                {zoneDefault.headline}
+              </Badge>
+            )}
+          </div>
+          <CardDescription>Current Position</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {zoneDefault?.description && (
+            <p className="text-foreground">{zoneDefault.description}</p>
+          )}
+          
+          {zoneDefault?.the_work && (
+            <div>
+              <span className="font-semibold text-sm uppercase tracking-wide">The Work:</span>
+              <p className="text-foreground mt-1">{zoneDefault.the_work}</p>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-border/50">
+            <span className="font-semibold text-sm">
+              For {clientName || 'this client'}:
+            </span>
+            <Textarea
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+              onBlur={handleSaveCustomNote}
+              placeholder="Add personalized interpretation for this client..."
+              className="mt-2 min-h-[80px] resize-none bg-background/50"
+              disabled={saving === 'custom_note'}
+            />
+            {saving === 'custom_note' && (
+              <p className="text-xs text-muted-foreground mt-1">Saving...</p>
+            )}
           </div>
         </CardContent>
       </Card>
