@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Sparkles, Loader2, ChevronDown, Flame, Pencil, X, Plus } from 'lucide-react';
-import { supabase, ZoneInterpretation, Superpower } from '@/lib/supabase';
+import { supabase, ZoneInterpretation, Superpower, WorldAskingInsight } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Snapshot } from '@/hooks/useClientDetail';
@@ -34,6 +34,11 @@ interface SuperpowerFormData {
   category: SuperpowerCategory;
 }
 
+interface InsightFormData {
+  insight: string;
+  fires_element: string;
+}
+
 interface NarrativeMapTabProps {
   engagement: {
     id: string;
@@ -46,6 +51,7 @@ interface NarrativeMapTabProps {
     superpowers_claimed?: Superpower[] | null;
     superpowers_emerging?: Superpower[] | null;
     superpowers_hidden?: Superpower[] | null;
+    world_asking?: WorldAskingInsight[] | null;
   } | null;
   clientName?: string;
   latestSnapshot?: Snapshot | null;
@@ -236,6 +242,16 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<SuperpowerCategory>('claimed');
+  const [deletingType, setDeletingType] = useState<'superpower' | 'insight'>('superpower');
+
+  // World Asking modal state
+  const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
+  const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(null);
+  const [insightForm, setInsightForm] = useState<InsightFormData>({
+    insight: '',
+    fires_element: 'strengths',
+  });
+  const [isSavingInsight, setIsSavingInsight] = useState(false);
 
   const hasActiveEngagement = engagement?.status === 'active';
 
@@ -397,6 +413,7 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
   const handleDeleteSuperpowerClick = (index: number, category: SuperpowerCategory) => {
     setDeletingIndex(index);
     setDeletingCategory(category);
+    setDeletingType('superpower');
     setDeleteConfirmOpen(true);
   };
 
@@ -518,6 +535,105 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         description: 'Could not remove the superpower. Please try again.',
         variant: 'destructive',
       });
+    }
+  };
+
+  // World Asking handlers
+  const handleAddInsight = () => {
+    setEditingInsightIndex(null);
+    setInsightForm({ insight: '', fires_element: 'strengths' });
+    setIsInsightModalOpen(true);
+  };
+
+  const handleEditInsight = (item: WorldAskingInsight, index: number) => {
+    setEditingInsightIndex(index);
+    setInsightForm({
+      insight: item.insight,
+      fires_element: item.fires_element,
+    });
+    setIsInsightModalOpen(true);
+  };
+
+  const handleDeleteInsightClick = (index: number) => {
+    setDeletingIndex(index);
+    setDeletingType('insight');
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleSaveInsight = async () => {
+    if (!engagement?.id || !insightForm.insight.trim()) return;
+
+    setIsSavingInsight(true);
+    try {
+      const newInsight: WorldAskingInsight = {
+        insight: insightForm.insight.trim(),
+        fires_element: insightForm.fires_element as WorldAskingInsight['fires_element'],
+        source: 'Coach',
+        created_at: new Date().toISOString(),
+      };
+
+      const currentArray = [...(engagement?.world_asking || [])];
+      
+      if (editingInsightIndex !== null) {
+        currentArray[editingInsightIndex] = newInsight;
+      } else {
+        currentArray.push(newInsight);
+      }
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ world_asking: currentArray })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Insight saved!' });
+      setIsInsightModalOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Error saving insight:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save the insight. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingInsight(false);
+    }
+  };
+
+  const handleDeleteInsight = async () => {
+    if (!engagement?.id || deletingIndex === null) return;
+
+    try {
+      const currentArray = [...(engagement?.world_asking || [])];
+      currentArray.splice(deletingIndex, 1);
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ world_asking: currentArray })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Insight removed' });
+      setDeleteConfirmOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting insight:', error);
+      toast({
+        title: 'Failed to delete',
+        description: 'Could not remove the insight. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deletingType === 'insight') {
+      await handleDeleteInsight();
+    } else {
+      await handleDeleteSuperpower();
     }
   };
 
@@ -703,6 +819,82 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         </CardContent>
       </Card>
 
+      {/* What Your Story Is Asking of You */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-lg">💡</span>
+            What Your Story Is Asking of You
+          </CardTitle>
+          <CardDescription>
+            Insights and themes emerging from your coaching journey
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(engagement?.world_asking && engagement.world_asking.length > 0) ? (
+            <div className="space-y-3">
+              {engagement.world_asking.map((item, idx) => {
+                const firesStyle = firesColors[item.fires_element] || firesColors.strengths;
+                return (
+                  <div 
+                    key={idx} 
+                    className="flex items-start gap-3 p-3 bg-background rounded-lg border"
+                  >
+                    <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-sm font-semibold shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground">{item.insight}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className={`${firesStyle.bg} ${firesStyle.text} capitalize text-xs`}>
+                          {item.fires_element}
+                        </Badge>
+                        {item.source && (
+                          <Badge variant="secondary" className="text-xs text-muted-foreground">
+                            {item.source}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleEditInsight(item, idx)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteInsightClick(idx)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic py-2">
+              No insights yet. Click Generate Insights or add manually.
+            </p>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 mt-4"
+            onClick={handleAddInsight}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Insight
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Generate Insights Section */}
       <Card>
         <CardHeader>
@@ -846,18 +1038,81 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         </DialogContent>
       </Dialog>
 
+      {/* Insight Edit Modal */}
+      <Dialog open={isInsightModalOpen} onOpenChange={setIsInsightModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingInsightIndex !== null ? 'Edit Insight' : 'Add Insight'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingInsightIndex !== null 
+                ? 'Update this insight.' 
+                : 'Add a new insight to the client\'s story.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="insight-text">Insight</Label>
+              <Textarea
+                id="insight-text"
+                value={insightForm.insight}
+                onChange={(e) => setInsightForm(prev => ({ ...prev, insight: e.target.value }))}
+                placeholder="What is this client's story asking of them?"
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>FIRES Element</Label>
+              <Select
+                value={insightForm.fires_element}
+                onValueChange={(value) => setInsightForm(prev => ({ ...prev, fires_element: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select element" />
+                </SelectTrigger>
+                <SelectContent>
+                  {firesElements.map(el => (
+                    <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInsightModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveInsight} 
+              disabled={isSavingInsight || !insightForm.insight.trim()}
+            >
+              {isSavingInsight ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove this superpower?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Remove this {deletingType === 'insight' ? 'insight' : 'superpower'}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The superpower will be permanently removed from this client's profile.
+              This action cannot be undone. The {deletingType === 'insight' ? 'insight' : 'superpower'} will be permanently removed from this client's profile.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSuperpower}>
+            <AlertDialogAction onClick={handleDelete}>
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
