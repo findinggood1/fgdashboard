@@ -99,18 +99,22 @@ export default function Chat() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Client context:</span>
           <Select 
-            value={selectedClient?.email || ''} 
+            value={selectedClient?.email || 'none'} 
             onValueChange={(value) => {
-              const client = clients.find(c => c.email === value);
-              setSelectedClient(client || null);
+              if (value === 'none') {
+                setSelectedClient(null);
+              } else {
+                const client = clients.find(c => c.email === value);
+                setSelectedClient(client || null);
+              }
             }}
           >
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="No client selected" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No client selected</SelectItem>
-              {clients.map(client => (
+              <SelectItem value="none">No client selected</SelectItem>
+              {clients.filter(client => client.email).map(client => (
                 <SelectItem key={client.email} value={client.email}>
                   {client.name}
                 </SelectItem>
