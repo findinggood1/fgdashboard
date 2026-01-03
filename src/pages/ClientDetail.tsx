@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useClientDetail } from '@/hooks/useClientDetail';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, Camera, Target, FolderOpen, MessageSquare, Map, ClipboardList, TrendingUp } from 'lucide-react';
 import { ClientDetailHeader } from '@/components/client-detail/ClientDetailHeader';
 import { ClientSummaryCards } from '@/components/client-detail/ClientSummaryCards';
 import { StorySection } from '@/components/client-detail/StorySection';
@@ -23,6 +23,19 @@ import { NotesTab } from '@/components/client-detail/tabs/NotesTab';
 import { NarrativeMapTab } from '@/components/client-detail/tabs/NarrativeMapTab';
 import { AssignmentsTab } from '@/components/client-detail/tabs/AssignmentsTab';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+
+// Tab loading skeleton
+function TabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
+}
 
 export default function ClientDetail() {
   const { email } = useParams<{ email: string }>();
@@ -30,6 +43,7 @@ export default function ClientDetail() {
   const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
   const [engagementWizardOpen, setEngagementWizardOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const latestSnapshot = snapshots[0] || null;
 
@@ -57,13 +71,29 @@ export default function ClientDetail() {
     toast({ title: `${action} coming soon`, description: 'This feature is under development.' });
   };
 
+  const tabs = [
+    { value: 'overview', label: 'Overview', icon: FileText },
+    { value: 'sessions', label: 'Sessions', icon: Calendar },
+    { value: 'assignments', label: 'Assignments', icon: ClipboardList },
+    { value: 'snapshots', label: 'Snapshots', icon: Camera },
+    { value: 'impact', label: 'Impact', icon: Target },
+    { value: 'files', label: 'Files', icon: FolderOpen },
+    { value: 'moreless', label: 'More/Less', icon: TrendingUp },
+    { value: 'notes', label: 'Notes', icon: MessageSquare },
+    { value: 'narrative-map', label: 'Map', icon: Map },
+  ];
+
   if (loading) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-24 w-full" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
+        <Skeleton className="h-10 w-32" />
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
+          </div>
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );
@@ -72,9 +102,23 @@ export default function ClientDetail() {
   if (!client) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <Link to="/clients"><Button variant="ghost" className="gap-2 -ml-2"><ArrowLeft className="h-4 w-4" />Back to Clients</Button></Link>
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg font-medium">Client not found</p>
+        <Link to="/clients">
+          <Button variant="ghost" className="gap-2 -ml-2 min-h-[44px]">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Clients
+          </Button>
+        </Link>
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium text-foreground">Client not found</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            The client you're looking for doesn't exist or has been removed.
+          </p>
+          <Link to="/clients">
+            <Button className="mt-4">View All Clients</Button>
+          </Link>
         </div>
       </div>
     );
@@ -82,7 +126,12 @@ export default function ClientDetail() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <Link to="/clients"><Button variant="ghost" className="gap-2 -ml-2"><ArrowLeft className="h-4 w-4" />Back to Clients</Button></Link>
+      <Link to="/clients">
+        <Button variant="ghost" className="gap-2 -ml-2 min-h-[44px]">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Clients
+        </Button>
+      </Link>
 
       <ClientDetailHeader
         client={client}
@@ -104,16 +153,23 @@ export default function ClientDetail() {
       <ClientSummaryCards latestSnapshot={latestSnapshot} lastActivity={lastActivity} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
-          <TabsTrigger value="impact">Impact</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="moreless">More/Less</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="narrative-map">Narrative Map</TabsTrigger>
+        <TabsList className={cn(
+          "w-full",
+          isMobile && "flex-nowrap justify-start gap-1"
+        )}>
+          {tabs.map((tab) => (
+            <TabsTrigger 
+              key={tab.value} 
+              value={tab.value}
+              className={cn(
+                "gap-1.5",
+                isMobile && "flex-shrink-0 px-3"
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              <span className={cn(isMobile && "hidden sm:inline")}>{tab.label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
@@ -139,6 +195,7 @@ export default function ClientDetail() {
             onRefresh={refetch}
           />
         </TabsContent>
+        
         <TabsContent value="assignments">
           <AssignmentsTab 
             assignments={assignments} 
@@ -147,12 +204,30 @@ export default function ClientDetail() {
             onRefresh={refetch}
           />
         </TabsContent>
-        <TabsContent value="snapshots"><SnapshotsTab snapshots={snapshots} /></TabsContent>
-        <TabsContent value="impact"><ImpactTab impacts={impactVerifications} /></TabsContent>
-        <TabsContent value="files"><FilesTab files={files} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} /></TabsContent>
-        <TabsContent value="moreless"><MoreLessTab markers={markers} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} /></TabsContent>
-        <TabsContent value="notes"><NotesTab notes={notes} memos={memos} sessions={sessions} clientEmail={client?.email || ''} onRefresh={refetch} /></TabsContent>
-        <TabsContent value="narrative-map"><NarrativeMapTab engagement={engagement} clientName={client?.name} latestSnapshot={latestSnapshot} refetch={refetch} /></TabsContent>
+        
+        <TabsContent value="snapshots">
+          <SnapshotsTab snapshots={snapshots} />
+        </TabsContent>
+        
+        <TabsContent value="impact">
+          <ImpactTab impacts={impactVerifications} />
+        </TabsContent>
+        
+        <TabsContent value="files">
+          <FilesTab files={files} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} />
+        </TabsContent>
+        
+        <TabsContent value="moreless">
+          <MoreLessTab markers={markers} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} />
+        </TabsContent>
+        
+        <TabsContent value="notes">
+          <NotesTab notes={notes} memos={memos} sessions={sessions} clientEmail={client?.email || ''} onRefresh={refetch} />
+        </TabsContent>
+        
+        <TabsContent value="narrative-map">
+          <NarrativeMapTab engagement={engagement} clientName={client?.name} latestSnapshot={latestSnapshot} refetch={refetch} />
+        </TabsContent>
       </Tabs>
     </div>
   );
