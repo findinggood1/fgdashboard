@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { Client, CoachingEngagement } from '@/lib/supabase';
+import { Client, ClientStatus, CoachingEngagement } from '@/lib/supabase';
 import { Snapshot } from '@/hooks/useClientDetail';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ZoneBadge } from '@/components/clients/ZoneBadge';
-import { Plus, FileText, Upload, Rocket } from 'lucide-react';
+import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
+import { Plus, FileText, Upload, Rocket, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ClientDetailHeaderProps {
@@ -16,6 +16,8 @@ interface ClientDetailHeaderProps {
   onAddSession: () => void;
   onUploadFile: () => void;
   onStartEngagement: () => void;
+  onStatusChange?: (status: ClientStatus) => Promise<void>;
+  onDelete?: () => void;
 }
 
 const phaseColors: Record<string, string> = {
@@ -38,6 +40,8 @@ export function ClientDetailHeader({
   onAddSession,
   onUploadFile,
   onStartEngagement,
+  onStatusChange,
+  onDelete,
 }: ClientDetailHeaderProps) {
   const navigate = useNavigate();
 
@@ -60,11 +64,21 @@ export function ClientDetailHeader({
       {/* Name and email */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-serif font-semibold">
-            {client.name || client.email}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-serif font-semibold">
+              {client.name || client.email}
+            </h1>
+            <ClientStatusBadge
+              status={client.status as ClientStatus}
+              editable={!!onStatusChange}
+              onStatusChange={onStatusChange}
+            />
+          </div>
           {client.name && (
             <p className="text-muted-foreground">{client.email}</p>
+          )}
+          {client.phone && (
+            <p className="text-muted-foreground text-sm">{client.phone}</p>
           )}
         </div>
 
@@ -89,6 +103,13 @@ export function ClientDetailHeader({
         </div>
       </div>
 
+      {/* Client notes */}
+      {client.notes && (
+        <p className="text-sm text-muted-foreground italic bg-muted/50 rounded-lg p-3">
+          {client.notes}
+        </p>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={onAddNote}>
@@ -107,6 +128,12 @@ export function ClientDetailHeader({
           <Button variant="secondary" size="sm" onClick={onStartEngagement}>
             <Rocket className="h-4 w-4 mr-1" />
             Start Engagement
+          </Button>
+        )}
+        {onDelete && (
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto">
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
           </Button>
         )}
       </div>

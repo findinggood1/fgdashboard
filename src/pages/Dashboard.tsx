@@ -58,9 +58,9 @@ export default function Dashboard() {
   const isAdmin = userRole === 'admin';
   const today = new Date();
 
-  const handleAddClient = async (email: string, name?: string) => {
+  const handleAddClient = async (data: { email: string; name: string; phone?: string; notes?: string }) => {
     try {
-      await addClient(email, name);
+      await addClient(data);
       toast.success('Client added successfully');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add client');

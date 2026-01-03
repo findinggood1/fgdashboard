@@ -2,9 +2,11 @@ import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useClients, ClientWithDetails } from '@/hooks/useClients';
+import { ClientStatus } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -20,8 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Plus, Users, ChevronRight } from 'lucide-react';
+import { Search, Plus, Users, ChevronRight, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ZoneBadge } from '@/components/clients/ZoneBadge';
+import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
 import { AddClientModal } from '@/components/clients/AddClientModal';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,13 +33,14 @@ import { cn } from '@/lib/utils';
 
 type ZoneFilter = 'all' | 'exploring' | 'discovering' | 'performing' | 'owning';
 type EngagementFilter = 'all' | 'active' | 'none' | 'completed';
+type StatusFilter = 'all' | 'pending' | 'approved' | 'inactive';
 
 const phaseLabels: Record<string, string> = {
   name: 'NAME (CLARITY)',
   validate: 'VALIDATE (CONFIDENCE)',
   communicate: 'COMMUNICATE (INFLUENCE)',
 };
-type SortOption = 'last_activity' | 'name' | 'zone';
+type SortOption = 'last_activity' | 'name' | 'zone' | 'status';
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -58,15 +62,18 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function Clients() {
   const navigate = useNavigate();
-  const { clients, loading, addClient } = useClients();
+  const { clients, loading, addClient, updateClientStatus, bulkUpdateStatus } = useClients();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [zoneFilter, setZoneFilter] = useState<ZoneFilter>('all');
   const [engagementFilter, setEngagementFilter] = useState<EngagementFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('last_activity');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -88,6 +95,11 @@ export default function Clients() {
       result = result.filter(
         (client) => client.overall_zone?.toLowerCase() === zoneFilter
       );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      result = result.filter((client) => client.status === statusFilter);
     }
 
     // Engagement filter
@@ -113,6 +125,11 @@ export default function Clients() {
         const aName = a.name || a.email;
         const bName = b.name || b.email;
         return aName.localeCompare(bName);
+      } else if (sortBy === 'status') {
+        const statusOrder = { pending: 1, approved: 2, inactive: 3 };
+        const aOrder = statusOrder[a.status as keyof typeof statusOrder] || 4;
+        const bOrder = statusOrder[b.status as keyof typeof statusOrder] || 4;
+        return aOrder - bOrder;
       } else {
         // Zone sorting: Owning > Performing > Discovering > Exploring > null
         const zoneOrder = { owning: 4, performing: 3, discovering: 2, exploring: 1 };
@@ -123,14 +140,62 @@ export default function Clients() {
     });
 
     return result;
-  }, [clients, debouncedSearch, zoneFilter, engagementFilter, sortBy]);
+  }, [clients, debouncedSearch, zoneFilter, statusFilter, engagementFilter, sortBy]);
 
-  const handleAddClient = async (email: string, name?: string) => {
-    await addClient(email, name);
+  const handleAddClient = async (data: { email: string; name: string; phone?: string; notes?: string }) => {
+    await addClient(data);
     toast({
       title: 'Client added',
-      description: `${name || email} has been added to your roster.`,
+      description: `${data.name || data.email} has been added to your roster.`,
     });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      await bulkUpdateStatus(Array.from(selectedIds), 'approved');
+      toast({ title: 'Clients approved', description: `${selectedIds.size} client(s) approved.` });
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to approve clients.', variant: 'destructive' });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      await bulkUpdateStatus(Array.from(selectedIds), 'inactive');
+      toast({ title: 'Clients deactivated', description: `${selectedIds.size} client(s) deactivated.` });
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to deactivate clients.', variant: 'destructive' });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredAndSortedClients.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredAndSortedClients.map((c) => c.id)));
+    }
   };
 
   const formatLastActivity = (date: string | null) => {
@@ -164,9 +229,12 @@ export default function Clients() {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-foreground truncate">
-            {client.name || <span className="text-muted-foreground italic">No name</span>}
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-medium text-foreground truncate">
+              {client.name || <span className="text-muted-foreground italic">No name</span>}
+            </p>
+            <ClientStatusBadge status={client.status as ClientStatus} />
+          </div>
           <p className="text-sm text-muted-foreground truncate">{client.email}</p>
         </div>
         <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
@@ -221,7 +289,19 @@ export default function Clients() {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+            <SelectTrigger className="min-h-[44px]" aria-label="Filter by status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={zoneFilter} onValueChange={(v) => setZoneFilter(v as ZoneFilter)}>
             <SelectTrigger className="min-h-[44px]" aria-label="Filter by zone">
               <SelectValue placeholder="Zone" />
@@ -237,10 +317,10 @@ export default function Clients() {
 
           <Select value={engagementFilter} onValueChange={(v) => setEngagementFilter(v as EngagementFilter)}>
             <SelectTrigger className="min-h-[44px]" aria-label="Filter by engagement">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Engagement" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="all">All Engagements</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
@@ -254,11 +334,48 @@ export default function Clients() {
             <SelectContent>
               <SelectItem value="last_activity">Activity</SelectItem>
               <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
               <SelectItem value="zone">Zone</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+          <span className="text-sm text-muted-foreground">
+            {selectedIds.size} selected
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleBulkApprove}
+            disabled={bulkLoading}
+            className="gap-1.5"
+          >
+            {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+            Approve
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleBulkDeactivate}
+            disabled={bulkLoading}
+            className="gap-1.5"
+          >
+            {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+            Deactivate
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Clients List */}
       <Card className="shadow-soft">
@@ -310,6 +427,7 @@ export default function Clients() {
                 onClick={() => {
                   setSearchQuery('');
                   setZoneFilter('all');
+                  setStatusFilter('all');
                   setEngagementFilter('all');
                 }}
                 className="mt-4"
@@ -330,42 +448,65 @@ export default function Clients() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedIds.size === filteredAndSortedClients.length && filteredAndSortedClients.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Last Activity</TableHead>
                     <TableHead>Engagement</TableHead>
                     <TableHead>Zone</TableHead>
-                    <TableHead>Growth Area</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedClients.map((client) => (
                     <TableRow
                       key={client.id}
-                      className="cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => handleClientClick(client.email)}
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleClientClick(client.email)}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/50 transition-colors",
+                        selectedIds.has(client.id) && "bg-muted/30"
+                      )}
                     >
-                      <TableCell className="font-medium">
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(client.id)}
+                          onCheckedChange={() => toggleSelection(client.id)}
+                          aria-label={`Select ${client.name || client.email}`}
+                        />
+                      </TableCell>
+                      <TableCell 
+                        className="font-medium"
+                        onClick={() => handleClientClick(client.email)}
+                      >
                         {client.name || <span className="text-muted-foreground italic">—</span>}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell 
+                        className="text-muted-foreground"
+                        onClick={() => handleClientClick(client.email)}
+                      >
                         {client.email}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell onClick={() => handleClientClick(client.email)}>
+                        <ClientStatusBadge status={client.status as ClientStatus} />
+                      </TableCell>
+                      <TableCell 
+                        className="text-muted-foreground"
+                        onClick={() => handleClientClick(client.email)}
+                      >
                         {formatLastActivity(client.last_activity)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={() => handleClientClick(client.email)}>
                         <span className={client.engagement_status === 'active' ? 'font-medium text-primary' : 'text-muted-foreground'}>
                           {formatEngagement(client)}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={() => handleClientClick(client.email)}>
                         <ZoneBadge zone={client.overall_zone} />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {client.growth_opportunity_category || '—'}
                       </TableCell>
                     </TableRow>
                   ))}

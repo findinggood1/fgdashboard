@@ -1,6 +1,7 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useClientDetail } from '@/hooks/useClientDetail';
+import { supabase, ClientStatus } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +15,7 @@ import { MoreLessSummary } from '@/components/client-detail/MoreLessSummary';
 import { RecentActivity } from '@/components/client-detail/RecentActivity';
 import { AssessmentsSection } from '@/components/client-detail/AssessmentsSection';
 import { StartEngagementWizard } from '@/components/client-detail/StartEngagementWizard';
+import { DeleteClientModal } from '@/components/clients/DeleteClientModal';
 import { SessionsTab } from '@/components/client-detail/tabs/SessionsTab';
 import { SnapshotsTab } from '@/components/client-detail/tabs/SnapshotsTab';
 import { ImpactTab } from '@/components/client-detail/tabs/ImpactTab';
@@ -24,6 +26,7 @@ import { NarrativeMapTab } from '@/components/client-detail/tabs/NarrativeMapTab
 import { AssignmentsTab } from '@/components/client-detail/tabs/AssignmentsTab';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 // Tab loading skeleton
@@ -39,10 +42,13 @@ function TabSkeleton() {
 
 export default function ClientDetail() {
   const { email } = useParams<{ email: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { coachData } = useAuth();
   const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
   const [engagementWizardOpen, setEngagementWizardOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const latestSnapshot = snapshots[0] || null;
@@ -69,6 +75,42 @@ export default function ClientDetail() {
 
   const handleAction = (action: string) => {
     toast({ title: `${action} coming soon`, description: 'This feature is under development.' });
+  };
+
+  const handleStatusChange = async (status: ClientStatus) => {
+    if (!client) return;
+    
+    try {
+      const updateData: Record<string, unknown> = { status };
+      if (status === 'approved') {
+        updateData.approved_at = new Date().toISOString();
+        updateData.approved_by = coachData?.id || null;
+      }
+
+      const { error } = await supabase
+        .from('clients')
+        .update(updateData)
+        .eq('id', client.id);
+
+      if (error) throw error;
+      
+      toast({ 
+        title: 'Status updated', 
+        description: `Client status changed to ${status}.` 
+      });
+      refetch();
+    } catch (err) {
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to update client status.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleted = () => {
+    toast({ title: 'Client deleted', description: 'The client has been removed.' });
+    navigate('/clients');
   };
 
   const tabs = [
@@ -141,6 +183,8 @@ export default function ClientDetail() {
         onAddSession={() => handleAction('Add Session')}
         onUploadFile={() => setActiveTab('files')}
         onStartEngagement={() => setEngagementWizardOpen(true)}
+        onStatusChange={handleStatusChange}
+        onDelete={() => setDeleteModalOpen(true)}
       />
 
       <StartEngagementWizard
@@ -148,6 +192,13 @@ export default function ClientDetail() {
         onOpenChange={setEngagementWizardOpen}
         clientEmail={client.email}
         onSuccess={refetch}
+      />
+
+      <DeleteClientModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        client={client}
+        onDeleted={handleDeleted}
       />
 
       <ClientSummaryCards latestSnapshot={latestSnapshot} lastActivity={lastActivity} />
