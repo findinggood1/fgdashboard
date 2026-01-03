@@ -58,7 +58,7 @@ export function MoreLessTab({ markers, clientEmail, engagementId, onRefresh }: M
   const [newMarkerType, setNewMarkerType] = useState<'more' | 'less'>('more');
   const [newBaseline, setNewBaseline] = useState([5]);
   const [newTarget, setNewTarget] = useState([8]);
-  const [newFiresConnection, setNewFiresConnection] = useState<string>('');
+  const [newFiresConnection, setNewFiresConnection] = useState<string>('none');
 
   // Update score form state
   const [updateScore, setUpdateScore] = useState([5]);
@@ -83,7 +83,7 @@ export function MoreLessTab({ markers, clientEmail, engagementId, onRefresh }: M
     setNewMarkerType('more');
     setNewBaseline([5]);
     setNewTarget([8]);
-    setNewFiresConnection('');
+    setNewFiresConnection('none');
   };
 
   const handleAddMarker = async () => {
@@ -105,7 +105,7 @@ export function MoreLessTab({ markers, clientEmail, engagementId, onRefresh }: M
           baseline_score: newBaseline[0],
           target_score: newTarget[0],
           current_score: newBaseline[0],
-          fires_connection: newFiresConnection || null,
+          fires_connection: newFiresConnection === 'none' ? null : newFiresConnection,
           is_active: true,
         })
         .select()
@@ -390,7 +390,7 @@ export function MoreLessTab({ markers, clientEmail, engagementId, onRefresh }: M
                   <SelectValue placeholder="Select connection (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {FIRES_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
