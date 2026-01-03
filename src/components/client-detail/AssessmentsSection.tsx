@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ClipboardCheck, Plus, ChevronDown, FileUp, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -50,7 +50,6 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
     whatBringsYou: '',
     successLooksLike: '',
     biggestChallenge: '',
-    firesScores: { fulfillment: 5, impact: 5, relationships: 5, engagement: 5, structure: 5 },
     previousCoaching: '',
     sessionPreferences: '',
   });
@@ -71,7 +70,6 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
       whatBringsYou: '',
       successLooksLike: '',
       biggestChallenge: '',
-      firesScores: { fulfillment: 5, impact: 5, relationships: 5, engagement: 5, structure: 5 },
       previousCoaching: '',
       sessionPreferences: '',
     });
@@ -101,7 +99,6 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
             previous_coaching: intakeData.previousCoaching,
             session_preferences: intakeData.sessionPreferences,
           },
-          scores: intakeData.firesScores,
           status: 'completed',
         });
 
@@ -157,24 +154,6 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
     return ASSESSMENT_TYPES.find(t => t.value === type)?.label || type;
   };
 
-  const renderFIRESSlider = (label: string, key: keyof typeof intakeData.firesScores) => (
-    <div className="space-y-2">
-      <div className="flex justify-between">
-        <Label>{label}</Label>
-        <span className="text-sm text-muted-foreground">{intakeData.firesScores[key]}/10</span>
-      </div>
-      <Slider
-        value={[intakeData.firesScores[key]]}
-        onValueChange={([v]) => setIntakeData(prev => ({
-          ...prev,
-          firesScores: { ...prev.firesScores, [key]: v }
-        }))}
-        min={1}
-        max={10}
-        step={1}
-      />
-    </div>
-  );
 
   const renderAssessmentCard = (assessment: ClientAssessment) => {
     const isExpanded = expandedId === assessment.id;
@@ -353,17 +332,6 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
                 </div>
               </div>
 
-              {/* FIRES Self-Assessment */}
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">FIRES Self-Assessment</Label>
-                <div className="grid gap-4">
-                  {renderFIRESSlider('Fulfillment', 'fulfillment')}
-                  {renderFIRESSlider('Impact', 'impact')}
-                  {renderFIRESSlider('Relationships', 'relationships')}
-                  {renderFIRESSlider('Engagement', 'engagement')}
-                  {renderFIRESSlider('Structure', 'structure')}
-                </div>
-              </div>
 
               {/* Experience & Preferences */}
               <div className="space-y-4">
