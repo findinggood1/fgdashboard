@@ -515,7 +515,7 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
                 <Input
                   value={marker.text}
                   onChange={(e) => updateMarker(marker.id, { text: e.target.value })}
-                  placeholder="What behavior to track?"
+                  placeholder="What behavior, thought, or feeling to track?"
                   className="flex-1"
                 />
                 <Button variant="ghost" size="icon" onClick={() => removeMarker(marker.id)}>

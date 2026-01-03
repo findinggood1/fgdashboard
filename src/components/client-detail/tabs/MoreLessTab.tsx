@@ -342,7 +342,7 @@ export function MoreLessTab({ markers, clientEmail, engagementId, onRefresh }: M
                 id="marker-text"
                 value={newMarkerText}
                 onChange={(e) => setNewMarkerText(e.target.value)}
-                placeholder="e.g., Speaking up in meetings, Checking email after hours"
+                placeholder="What behavior, thought, or feeling to track?"
                 rows={2}
               />
             </div>
