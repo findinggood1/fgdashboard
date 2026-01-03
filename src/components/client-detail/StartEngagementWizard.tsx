@@ -83,8 +83,8 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
   const [storyPotential, setStoryPotential] = useState('');
 
   // Step 3: Goals & Challenges
-  const [goals, setGoals] = useState<GoalItem[]>([{ id: crypto.randomUUID(), text: '', firesLever: 'impact' }]);
-  const [challenges, setChallenges] = useState<ChallengeItem[]>([{ id: crypto.randomUUID(), text: '', firesLever: 'structure' }]);
+  const [goals, setGoals] = useState<GoalItem[]>([{ id: crypto.randomUUID(), text: '', firesLever: 'influence' }]);
+  const [challenges, setChallenges] = useState<ChallengeItem[]>([{ id: crypto.randomUUID(), text: '', firesLever: 'resilience' }]);
 
   // Step 4: FIRES Focus
   const [firesFocus, setFiresFocus] = useState<string[]>([]);
@@ -100,8 +100,8 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
     setStoryPresent('');
     setStoryPast('');
     setStoryPotential('');
-    setGoals([{ id: crypto.randomUUID(), text: '', firesLever: 'impact' }]);
-    setChallenges([{ id: crypto.randomUUID(), text: '', firesLever: 'structure' }]);
+    setGoals([{ id: crypto.randomUUID(), text: '', firesLever: 'influence' }]);
+    setChallenges([{ id: crypto.randomUUID(), text: '', firesLever: 'resilience' }]);
     setFiresFocus([]);
     setMarkers([]);
   };
@@ -113,7 +113,7 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
 
   const addGoal = () => {
     if (goals.length < 3) {
-      setGoals([...goals, { id: crypto.randomUUID(), text: '', firesLever: 'impact' }]);
+      setGoals([...goals, { id: crypto.randomUUID(), text: '', firesLever: 'influence' }]);
     }
   };
 
@@ -129,7 +129,7 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
 
   const addChallenge = () => {
     if (challenges.length < 3) {
-      setChallenges([...challenges, { id: crypto.randomUUID(), text: '', firesLever: 'structure' }]);
+      setChallenges([...challenges, { id: crypto.randomUUID(), text: '', firesLever: 'resilience' }]);
     }
   };
 
