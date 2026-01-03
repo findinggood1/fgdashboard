@@ -5,7 +5,11 @@ import { supabase, Client, Superpower, WorldAskingInsight, WeeklyAction, ZoneInt
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Compass } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Compass, Pencil, Check, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Local interface for what we fetch from the DB
 interface ClientMapEngagement {
@@ -41,6 +45,11 @@ export default function MyMap() {
   const [engagement, setEngagement] = useState<ClientMapEngagement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Editing state for world_asking
+  const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(null);
+  const [editingInsightText, setEditingInsightText] = useState<string>('');
+  const [savingInsight, setSavingInsight] = useState(false);
 
   const isCoach = userRole === 'coach' || userRole === 'admin';
 
@@ -481,22 +490,145 @@ export default function MyMap() {
 
             {/* What Your Story Is Asking */}
             {engagement.world_asking && engagement.world_asking.length > 0 && (
-              <Card className="border-amber-200/50 bg-white/70 backdrop-blur shadow-xl">
+              <Card className="border-rose-200/50 bg-white/70 backdrop-blur shadow-xl">
                 <CardContent className="py-8">
-                  <h2 className="text-xl font-semibold text-amber-900 mb-6 flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-amber-900 mb-2 flex items-center gap-2">
                     <Target className="h-5 w-5 text-rose-500" />
                     What Your Story Is Asking of You
                   </h2>
+                  <p className="text-sm text-amber-700/70 mb-6 italic">
+                    These insights come from your coaching sessions. Feel free to refine them in your own words.
+                  </p>
                   <div className="space-y-4">
-                    {engagement.world_asking.map((item, index) => (
-                      <div key={index} className="p-4 rounded-lg bg-rose-50/50 border border-rose-200/50">
-                        <p className="text-amber-900">{item?.insight || 'Insight pending...'}</p>
-                      </div>
-                    ))}
+                    {engagement.world_asking.map((item, index) => {
+                      // Handle both string[] and WorldAskingInsight[] formats
+                      const insightText = typeof item === 'string' ? item : item?.insight || '';
+                      const firesElement = typeof item === 'string' ? null : item?.fires_element;
+                      
+                      return (
+                        <div key={index} className="p-4 rounded-lg bg-rose-50/50 border border-rose-200/50">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-200 text-rose-800 text-sm font-semibold flex items-center justify-center">
+                                {index + 1}
+                              </span>
+                              <div className="flex-1">
+                                <p className="text-amber-900">{insightText || 'Insight pending...'}</p>
+                                {firesElement && (
+                                  <Badge variant="outline" className="mt-2 bg-rose-100 text-rose-800 border-rose-300 text-xs">
+                                    {firesElement}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setEditingInsightIndex(index);
+                                setEditingInsightText(insightText);
+                              }}
+                              className="flex-shrink-0 text-rose-600 hover:text-rose-800 text-sm font-medium flex items-center gap-1 transition-colors"
+                            >
+                              <Pencil className="h-3 w-3" />
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* Edit Insight Modal */}
+            <Dialog open={editingInsightIndex !== null} onOpenChange={(open) => !open && setEditingInsightIndex(null)}>
+              <DialogContent className="bg-white">
+                <DialogHeader>
+                  <DialogTitle>Edit Insight</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                  <Input
+                    value={editingInsightText}
+                    onChange={(e) => setEditingInsightText(e.target.value)}
+                    placeholder="Enter your insight..."
+                    className="w-full"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingInsightIndex(null)}
+                    disabled={savingInsight}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (!engagement || editingInsightIndex === null) return;
+                      
+                      setSavingInsight(true);
+                      try {
+                        // Get original insight for history
+                        const originalItem = engagement.world_asking?.[editingInsightIndex];
+                        const originalText = typeof originalItem === 'string' ? originalItem : originalItem?.insight || '';
+                        
+                        // Build updated world_asking array
+                        const updatedWorldAsking = [...(engagement.world_asking || [])];
+                        const currentItem = updatedWorldAsking[editingInsightIndex];
+                        
+                        if (typeof currentItem === 'string') {
+                          updatedWorldAsking[editingInsightIndex] = editingInsightText;
+                        } else {
+                          updatedWorldAsking[editingInsightIndex] = {
+                            ...currentItem,
+                            insight: editingInsightText,
+                            source: 'Client',
+                          } as WorldAskingInsight;
+                        }
+                        
+                        // Update engagement
+                        const { error: updateError } = await supabase
+                          .from('coaching_engagements')
+                          .update({ world_asking: updatedWorldAsking })
+                          .eq('id', engagement.id);
+                        
+                        if (updateError) throw updateError;
+                        
+                        // Log to narrative_map_history
+                        await supabase
+                          .from('narrative_map_history')
+                          .insert({
+                            engagement_id: engagement.id,
+                            field_name: 'world_asking',
+                            old_value: originalText,
+                            new_value: editingInsightText,
+                            changed_by: 'client',
+                            changed_at: new Date().toISOString(),
+                          });
+                        
+                        // Update local state
+                        setEngagement({
+                          ...engagement,
+                          world_asking: updatedWorldAsking as WorldAskingInsight[] | string[],
+                        });
+                        
+                        toast.success('Insight updated');
+                        setEditingInsightIndex(null);
+                      } catch (err) {
+                        console.error('Error updating insight:', err);
+                        toast.error('Failed to update insight');
+                      } finally {
+                        setSavingInsight(false);
+                      }
+                    }}
+                    disabled={savingInsight || !editingInsightText.trim()}
+                  >
+                    {savingInsight ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Save
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* This Week's Focus */}
             {(engagement.weekly_tracking || engagement.weekly_creating || (engagement.weekly_actions && engagement.weekly_actions.length > 0)) && (
