@@ -12,12 +12,12 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user, userRole, clientData, loading } = useAuth();
+  const { signIn, user, userRole, clientData, loading, roleLoading } = useAuth();
   const navigate = useNavigate();
 
   // Handle routing after auth state is determined
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading || roleLoading || !user) return;
 
     // Route based on user role
     if (userRole === 'admin' || userRole === 'coach') {
@@ -35,7 +35,7 @@ export default function Login() {
       // User exists but no role found
       navigate('/no-account', { replace: true });
     }
-  }, [user, userRole, clientData, loading, navigate]);
+  }, [user, userRole, clientData, loading, roleLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

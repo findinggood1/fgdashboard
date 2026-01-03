@@ -9,6 +9,7 @@ interface AuthContextType {
   coachData: Coach | null;
   clientData: Client | null;
   loading: boolean;
+  roleLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -28,35 +29,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [coachData, setCoachData] = useState<Coach | null>(null);
   const [clientData, setClientData] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   const determineUserRole = async (email: string) => {
-    // Check coaches table first
-    const { data: coach } = await supabase
-      .from('coaches')
-      .select('*')
-      .eq('email', email)
-      .maybeSingle();
+    setRoleLoading(true);
+    try {
+      // Check coaches table first
+      const { data: coach } = await supabase
+        .from('coaches')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
 
-    if (coach) {
-      setCoachData(coach);
-      setUserRole(coach.is_admin ? 'admin' : 'coach');
-      return;
+      if (coach) {
+        setCoachData(coach);
+        setUserRole(coach.is_admin ? 'admin' : 'coach');
+        return;
+      }
+
+      // Check clients table
+      const { data: client } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (client) {
+        setClientData(client);
+        setUserRole('client');
+        return;
+      }
+
+      setUserRole(null);
+    } finally {
+      setRoleLoading(false);
     }
-
-    // Check clients table
-    const { data: client } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (client) {
-      setClientData(client);
-      setUserRole('client');
-      return;
-    }
-
-    setUserRole(null);
   };
 
   useEffect(() => {
@@ -71,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             determineUserRole(session.user.email!);
           }, 0);
         } else {
+          setRoleLoading(false);
           setUserRole(null);
           setCoachData(null);
           setClientData(null);
@@ -120,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       coachData,
       clientData,
       loading,
+      roleLoading,
       signIn,
       signOut,
     }}>
