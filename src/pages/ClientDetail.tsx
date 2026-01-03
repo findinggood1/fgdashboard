@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function ClientDetail() {
   const { email } = useParams<{ email: string }>();
   const { toast } = useToast();
-  const { client, engagement, snapshots, impactVerifications, sessions, markers, notes, files, loading, updateEngagement, refetch } = useClientDetail(email);
+  const { client, engagement, snapshots, impactVerifications, sessions, markers, notes, memos, files, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
 
   const latestSnapshot = snapshots[0] || null;
@@ -123,8 +123,8 @@ export default function ClientDetail() {
         <TabsContent value="snapshots"><SnapshotsTab snapshots={snapshots} /></TabsContent>
         <TabsContent value="impact"><ImpactTab impacts={impactVerifications} /></TabsContent>
         <TabsContent value="files"><FilesTab files={files} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} /></TabsContent>
-        <TabsContent value="moreless"><MoreLessTab markers={markers} onRefresh={refetch} /></TabsContent>
-        <TabsContent value="notes"><NotesTab notes={notes} /></TabsContent>
+        <TabsContent value="moreless"><MoreLessTab markers={markers} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} /></TabsContent>
+        <TabsContent value="notes"><NotesTab notes={notes} memos={memos} sessions={sessions} clientEmail={client?.email || ''} onRefresh={refetch} /></TabsContent>
         <TabsContent value="narrative-map"><NarrativeMapTab engagement={engagement} clientName={client?.name} latestSnapshot={latestSnapshot} refetch={refetch} /></TabsContent>
       </Tabs>
     </div>
