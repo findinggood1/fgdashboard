@@ -17,6 +17,7 @@ import {
   UserPlus,
   MessageSquare,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Camera,
   Target,
@@ -52,6 +53,7 @@ export default function Dashboard() {
   const { addClient } = useClients();
   const [showAddClient, setShowAddClient] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
 
   const isAdmin = userRole === 'admin';
   const today = new Date();
@@ -200,34 +202,64 @@ export default function Dashboard() {
                 <Clock className="h-8 w-8 mb-2 opacity-50" />
                 <p className="text-sm">No recent activity</p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {activityFeed.map((activity) => {
-                  const Icon = getActivityIcon(activity.type);
-                  return (
-                    <div
-                      key={activity.id}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/clients/${encodeURIComponent(activity.clientEmail)}`)}
+            ) : (() => {
+              const limit = 5;
+              const items = activityExpanded ? activityFeed : activityFeed.slice(0, limit);
+              const hasMore = activityFeed.length > limit;
+
+              return (
+                <>
+                  <div className="space-y-3">
+                    {items.map((activity) => {
+                      const Icon = getActivityIcon(activity.type);
+                      return (
+                        <div
+                          key={activity.id}
+                          className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => navigate(`/clients/${encodeURIComponent(activity.clientEmail)}`)}
+                        >
+                          <div className="p-2 rounded-full bg-primary/10">
+                            <Icon className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm">
+                              <span className="font-medium">{activity.clientName}</span>
+                              {' '}
+                              <span className="text-muted-foreground">{activity.description}</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {hasMore && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3 text-muted-foreground hover:text-foreground"
+                      onClick={() => setActivityExpanded((v) => !v)}
                     >
-                      <div className="p-2 rounded-full bg-primary/10">
-                        <Icon className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">
-                          <span className="font-medium">{activity.clientName}</span>
-                          {' '}
-                          <span className="text-muted-foreground">{activity.description}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      {activityExpanded ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          See more ({activityFeed.length - limit} more)
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
