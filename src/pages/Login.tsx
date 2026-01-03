@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +68,7 @@ export default function Login() {
             <span className="text-2xl font-serif text-primary-foreground font-bold">FG</span>
           </div>
           <h1 className="text-3xl font-serif font-semibold text-foreground">Finding Good</h1>
-          <p className="text-muted-foreground mt-2">Welcome back</p>
+          <p className="text-muted-foreground mt-2">Coach & Admin Portal</p>
         </div>
 
         {/* Login Card */}
@@ -121,9 +121,17 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Need help? Contact your administrator
-        </p>
+        <div className="text-center mt-6 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Are you a client?{' '}
+            <Link to="/portal/login" className="text-primary hover:underline">
+              Access your portal here
+            </Link>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Need help? Contact your administrator
+          </p>
+        </div>
       </div>
     </div>
   );

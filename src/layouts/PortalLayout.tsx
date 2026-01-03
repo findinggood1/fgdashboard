@@ -25,8 +25,8 @@ export default function PortalLayout() {
   }
 
   if (!user) {
-    console.log('[PortalLayout] No user, redirecting to /login');
-    return <Navigate to="/login" replace />;
+    console.log('[PortalLayout] No user, redirecting to /portal/login');
+    return <Navigate to="/portal/login" replace />;
   }
 
   // If user is a coach or admin, redirect them to dashboard (not "no account")
