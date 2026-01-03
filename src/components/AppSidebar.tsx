@@ -8,6 +8,7 @@ import {
   MessageSquare,
   ChevronLeft,
   LogOut,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,12 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       to: '/chat', 
       icon: MessageSquare, 
       label: 'AI Prep',
+      show: isCoach 
+    },
+    { 
+      to: '/my/map', 
+      icon: Map, 
+      label: 'Client Map View',
       show: isCoach 
     },
   ].filter(item => item.show);
