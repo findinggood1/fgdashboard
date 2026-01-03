@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { CoachingNote, VoiceMemo, SessionTranscript } from '@/hooks/useClientDetail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { MessageSquare, Lightbulb, AlertTriangle, ArrowRight, Plus, ChevronDown, Mic, Play, Pause, Clock, FileText, Loader2 } from 'lucide-react';
+import { MessageSquare, Lightbulb, AlertTriangle, ArrowRight, Plus, ChevronDown, Mic, Clock, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { VoiceMemoRecorder } from './VoiceMemoRecorder';
 
 interface NotesTabProps {
   notes: CoachingNote[];
@@ -128,13 +129,12 @@ export function NotesTab({ notes, memos, sessions, clientEmail, onRefresh }: Not
             Voice Memos
           </h3>
 
-          {memos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-              <Mic className="h-10 w-10 mb-3 opacity-50" />
-              <p className="font-medium">No voice memos</p>
-              <p className="text-sm mt-1">Voice memos will appear here</p>
-            </div>
-          ) : (
+          {/* Voice Memo Recorder */}
+          <div className="border-2 border-dashed rounded-lg p-6">
+            <VoiceMemoRecorder clientEmail={clientEmail} onSaved={() => onRefresh?.()} />
+          </div>
+
+          {memos.length > 0 && (
             <div className="space-y-3">
               {memos.map((memo) => (
                 <VoiceMemoCard key={memo.id} memo={memo} />
@@ -331,8 +331,8 @@ function NoteCard({ note }: { note: CoachingNote }) {
 }
 
 function VoiceMemoCard({ memo }: { memo: VoiceMemo }) {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '--:--';
@@ -341,63 +341,76 @@ function VoiceMemoCard({ memo }: { memo: VoiceMemo }) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handlePlayPause = () => {
-    // TODO: Implement actual audio playback
-    setIsPlaying(!isPlaying);
-  };
-
   return (
     <Card className="shadow-soft">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-10 rounded-full flex-shrink-0"
-            onClick={handlePlayPause}
-            disabled={!memo.audio_url}
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
-          
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="font-medium truncate">
                 {memo.title || 'Voice Memo'}
               </span>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
+              {memo.context && (
+                <Badge variant="outline" className="text-[10px] capitalize">
+                  {memo.context}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {formatDuration(memo.duration_seconds)}
               </span>
+              <span>{format(new Date(memo.recorded_at), 'MMM d, yyyy h:mm a')}</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {format(new Date(memo.recorded_at), 'MMM d, yyyy h:mm a')}
-            </p>
-
-            {memo.transcription && (
-              <Collapsible open={transcriptOpen} onOpenChange={setTranscriptOpen} className="mt-2">
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs p-0 h-auto">
-                    <FileText className="h-3 w-3 mr-1" />
-                    {transcriptOpen ? 'Hide' : 'Show'} Transcript
-                    <ChevronDown className={cn('h-3 w-3 ml-1 transition-transform', transcriptOpen && 'rotate-180')} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
-                  <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                    {memo.transcription}
-                  </p>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-
-            {!memo.is_transcribed && (
-              <Badge variant="secondary" className="mt-2 text-[10px]">
-                Not transcribed
-              </Badge>
-            )}
           </div>
         </div>
+
+        {/* HTML5 Audio Player */}
+        {memo.audio_url && (
+          <audio
+            ref={audioRef}
+            controls
+            src={memo.audio_url}
+            className="w-full h-10"
+            preload="metadata"
+          />
+        )}
+
+        {/* Tags */}
+        {memo.tags && memo.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {memo.tags.map((tag, i) => (
+              <Badge key={i} variant="secondary" className="text-[10px]">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Transcription */}
+        {memo.transcription && (
+          <Collapsible open={transcriptOpen} onOpenChange={setTranscriptOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-xs p-0 h-auto">
+                <FileText className="h-3 w-3 mr-1" />
+                {transcriptOpen ? 'Hide' : 'Show'} Transcript
+                <ChevronDown className={cn('h-3 w-3 ml-1 transition-transform', transcriptOpen && 'rotate-180')} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                {memo.transcription}
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {!memo.is_transcribed && !memo.transcription && (
+          <Badge variant="secondary" className="text-[10px]">
+            Not transcribed
+          </Badge>
+        )}
       </CardContent>
     </Card>
   );
