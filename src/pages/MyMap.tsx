@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase, Client, Superpower, WorldAskingInsight, WeeklyAction } from '@/lib/supabase';
+import { supabase, Client, Superpower, WorldAskingInsight, WeeklyAction, ZoneInterpretation } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote } from 'lucide-react';
+import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Compass } from 'lucide-react';
 
 // Local interface for what we fetch from the DB
 interface ClientMapEngagement {
@@ -19,7 +19,7 @@ interface ClientMapEngagement {
   current_phase: string;
   zone_start: string | null;
   zone_current: string | null;
-  zone_interpretations: any;
+  zone_interpretations: ZoneInterpretation[] | null;
   superpowers: Superpower[] | null;
   world_asking: WorldAskingInsight[] | null;
   weekly_tracking: string | null;
@@ -297,6 +297,98 @@ export default function MyMap() {
               </div>
             </div>
 
+            {/* Zone Section */}
+            {engagement.zone_current && (() => {
+              const zoneData = engagement.zone_interpretations?.find(
+                (z) => z.zone === engagement.zone_current
+              );
+              
+              // Zone-specific colors
+              const zoneColors: Record<string, { bg: string; border: string; text: string; accent: string; badge: string }> = {
+                'Performing': { 
+                  bg: 'from-amber-50 to-yellow-50', 
+                  border: 'border-amber-300', 
+                  text: 'text-amber-900',
+                  accent: 'text-amber-600',
+                  badge: 'bg-amber-500'
+                },
+                'Discovering': { 
+                  bg: 'from-blue-50 to-sky-50', 
+                  border: 'border-blue-300', 
+                  text: 'text-blue-900',
+                  accent: 'text-blue-600',
+                  badge: 'bg-blue-500'
+                },
+                'Coasting': { 
+                  bg: 'from-green-50 to-emerald-50', 
+                  border: 'border-green-300', 
+                  text: 'text-green-900',
+                  accent: 'text-green-600',
+                  badge: 'bg-green-500'
+                },
+                'Drifting': { 
+                  bg: 'from-slate-50 to-gray-50', 
+                  border: 'border-slate-300', 
+                  text: 'text-slate-900',
+                  accent: 'text-slate-600',
+                  badge: 'bg-slate-500'
+                },
+              };
+              
+              const colors = zoneColors[engagement.zone_current] || zoneColors['Performing'];
+              
+              return (
+                <Card className={`${colors.border} bg-gradient-to-br ${colors.bg} shadow-xl overflow-hidden`}>
+                  <CardContent className="py-8">
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className={`w-12 h-12 rounded-xl ${colors.badge} flex items-center justify-center shadow-lg`}>
+                        <Compass className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h2 className={`text-2xl font-bold ${colors.text} mb-1`}>
+                          {engagement.zone_current.toUpperCase()}
+                        </h2>
+                        {zoneData?.headline && (
+                          <p className={`text-sm font-medium ${colors.accent}`}>
+                            {zoneData.headline}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {zoneData?.description && (
+                      <div className="mb-6">
+                        <p className={`${colors.text} leading-relaxed`}>
+                          {zoneData.description}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {zoneData?.the_work && (
+                      <div className={`p-4 rounded-lg bg-white/60 border ${colors.border}/50 mb-4`}>
+                        <h3 className={`text-xs font-semibold uppercase tracking-wider ${colors.accent} mb-2`}>
+                          The Work
+                        </h3>
+                        <p className={`${colors.text} font-medium`}>
+                          {zoneData.the_work}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {zoneData?.custom_note && (
+                      <div className={`p-4 rounded-lg bg-white/40 border ${colors.border}/30`}>
+                        <h3 className={`text-xs font-semibold uppercase tracking-wider ${colors.accent} mb-2`}>
+                          Coach Note
+                        </h3>
+                        <p className={`${colors.text} italic`}>
+                          {zoneData.custom_note}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
             {/* Superpowers */}
             {engagement.superpowers && engagement.superpowers.length > 0 && (
               <Card className="border-amber-200/50 bg-white/70 backdrop-blur shadow-xl">
