@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import { ClientFile } from '@/hooks/useClientDetail';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ import { toast } from 'sonner';
 interface FilesTabProps {
   files: ClientFile[];
   clientEmail: string;
+  engagementId?: string;
   onRefresh: () => void;
 }
 
@@ -100,7 +102,17 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
+const categoryColors: Record<string, string> = {
+  intake: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  assessment: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  resource: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  reference: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  export: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
+  other: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
+};
+
+export function FilesTab({ files, clientEmail, engagementId, onRefresh }: FilesTabProps) {
+  const { coachData } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,7 +127,6 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadCategory, setUploadCategory] = useState<string>('');
-  const [uploadTags, setUploadTags] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -179,7 +190,6 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
     setUploadTitle('');
     setUploadDescription('');
     setUploadCategory('');
-    setUploadTags('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -201,35 +211,35 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
 
       if (uploadError) {
         if (uploadError.message.includes('bucket') || uploadError.message.includes('not found')) {
-          throw new Error('Storage bucket not configured. Please run the setup SQL in Supabase.');
+          throw new Error('Storage bucket not configured. Please check Supabase settings.');
         }
         throw uploadError;
       }
 
-      // 2. Get signed URL
+      // 2. Get signed URL (1 year expiry)
       const { data: urlData } = await supabase.storage
         .from('client-files')
-        .createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
 
-      // 3. Parse tags
-      const tagsArray = uploadTags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
+      // 3. Determine file type
+      const fileType = getFileType(selectedFile.type);
 
-      // 4. Insert record
+      // 4. Save to database with all fields
       const { error: insertError } = await supabase
         .from('client_files')
         .insert({
           client_email: clientEmail,
+          engagement_id: engagementId || null,
           file_name: selectedFile.name,
-          file_type: getFileType(selectedFile.type),
+          file_type: fileType,
+          file_size_bytes: selectedFile.size,
+          mime_type: selectedFile.type,
           storage_path: path,
           storage_url: urlData?.signedUrl || null,
-          title: uploadTitle || selectedFile.name,
+          title: uploadTitle || selectedFile.name.replace(/\.[^/.]+$/, ''),
           description: uploadDescription || null,
           category: uploadCategory || null,
-          tags: tagsArray.length > 0 ? tagsArray : null,
+          uploaded_by_coach_id: coachData?.id || null,
         });
 
       if (insertError) throw insertError;
@@ -262,7 +272,7 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
         }
       }
 
-      // 2. Delete record
+      // 2. Delete record from database
       const { error } = await supabase
         .from('client_files')
         .delete()
@@ -285,6 +295,17 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
   const openFile = (file: ClientFile) => {
     if (file.storage_url) {
       window.open(file.storage_url, '_blank');
+    } else {
+      toast.error('File URL not available');
+    }
+  };
+
+  const downloadFile = (file: ClientFile) => {
+    if (file.storage_url) {
+      const link = document.createElement('a');
+      link.href = file.storage_url;
+      link.download = file.file_name;
+      link.click();
     } else {
       toast.error('File URL not available');
     }
@@ -351,8 +372,10 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
           <p className="text-lg font-medium">
             {files.length === 0 ? 'No files uploaded yet' : 'No files match your filter'}
           </p>
-          <p className="text-sm mt-1">
-            {files.length === 0 ? 'Click "Upload File" to add files' : 'Try adjusting your filters'}
+          <p className="text-sm mt-1 text-center max-w-md">
+            {files.length === 0
+              ? 'Upload intake forms, assessments, or resources for this client.'
+              : 'Try adjusting your filters or search term'}
           </p>
         </div>
       )}
@@ -365,7 +388,7 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
             return (
               <Card
                 key={file.id}
-                className="shadow-soft hover:shadow-md transition-shadow cursor-pointer"
+                className="shadow-soft hover:shadow-md transition-shadow cursor-pointer group"
                 onClick={() => openFile(file)}
               >
                 <CardContent className="p-4">
@@ -382,9 +405,12 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                           {file.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {file.category && (
-                          <Badge variant="outline" className="text-xs capitalize">
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs capitalize ${categoryColors[file.category] || categoryColors.other}`}
+                          >
                             {file.category}
                           </Badge>
                         )}
@@ -395,7 +421,7 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -403,6 +429,10 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openFile(file); }}>
                           <Eye className="h-4 w-4 mr-2" />
                           View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); downloadFile(file); }}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
@@ -434,8 +464,9 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                 <TableHead>File</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Size</TableHead>
                 <TableHead>Uploaded</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -445,9 +476,9 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                   <TableRow key={file.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <FileIcon className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{file.title || file.file_name}</p>
+                        <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{file.title || file.file_name}</p>
                           {file.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-[300px]">
                               {file.description}
@@ -458,15 +489,19 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                     </TableCell>
                     <TableCell>
                       {file.category ? (
-                        <Badge variant="outline" className="capitalize">
+                        <Badge 
+                          variant="secondary" 
+                          className={`capitalize ${categoryColors[file.category] || categoryColors.other}`}
+                        >
                           {file.category}
                         </Badge>
                       ) : (
-                        '-'
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="capitalize">{file.file_type || '-'}</TableCell>
-                    <TableCell>{format(new Date(file.created_at), 'MMM d, yyyy')}</TableCell>
+                    <TableCell className="capitalize text-muted-foreground">{file.file_type || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatFileSize(file.file_size_bytes)}</TableCell>
+                    <TableCell className="text-muted-foreground">{format(new Date(file.created_at), 'MMM d, yyyy')}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
@@ -474,8 +509,18 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => openFile(file)}
+                          title="View"
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => downloadFile(file)}
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -485,6 +530,7 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                             setFileToDelete(file);
                             setDeleteDialogOpen(true);
                           }}
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -599,16 +645,6 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div>
-                  <Label htmlFor="tags">Tags</Label>
-                  <Input
-                    id="tags"
-                    value={uploadTags}
-                    onChange={(e) => setUploadTags(e.target.value)}
-                    placeholder="Comma-separated tags"
-                  />
-                </div>
               </div>
             </div>
           )}
@@ -638,7 +674,7 @@ export function FilesTab({ files, clientEmail, onRefresh }: FilesTabProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete file?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this file?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete "{fileToDelete?.title || fileToDelete?.file_name}" from
               storage. This action cannot be undone.

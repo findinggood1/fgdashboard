@@ -115,14 +115,18 @@ export interface Assignment {
 export interface ClientFile {
   id: string;
   client_email: string;
+  engagement_id: string | null;
   file_name: string;
   file_type: string | null;
+  file_size_bytes: number | null;
+  mime_type: string | null;
   storage_path: string | null;
   storage_url: string | null;
   title: string | null;
   description: string | null;
   category: string | null;
   tags: string[] | null;
+  uploaded_by_coach_id: string | null;
   created_at: string;
 }
 
