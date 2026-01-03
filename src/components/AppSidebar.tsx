@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   LogOut,
   Map,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,12 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       to: '/chat', 
       icon: MessageSquare, 
       label: 'AI Prep',
+      show: isCoach 
+    },
+    { 
+      to: '/coach/chat', 
+      icon: Bot, 
+      label: 'Coach AI Chat',
       show: isCoach 
     },
     { 

@@ -14,6 +14,7 @@ import EngagementDetail from "./pages/EngagementDetail";
 import Events from "./pages/Events";
 import Analytics from "./pages/Analytics";
 import Chat from "./pages/Chat";
+import CoachChat from "./pages/CoachChat";
 import MyMap from "./pages/MyMap";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/events" element={<Events />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/chat" element={<Chat />} />
+              <Route path="/coach/chat" element={<CoachChat />} />
             </Route>
 
             {/* Client Routes */}

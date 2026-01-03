@@ -14,7 +14,7 @@ Narrative Integrity = the ability to clarify, act on, and communicate the most h
 The 12-week engagement has three phases:
 - NAME (weeks 1-4): See the story clearly - confront what's actually true
 - VALIDATE (weeks 5-8): Act on it confidently - gather evidence it works  
-- ALIGN (weeks 9-12): Communicate it and help others do the same
+- COMMUNICATE (weeks 9-12): Communicate it and help others do the same
 
 THE FIRES FRAMEWORK:
 - Feelings: Emotional awareness and regulation
@@ -28,6 +28,9 @@ THE FOUR ZONES:
 - Discovering (Low confidence, High alignment): Bring forward past wins
 - Performing (High confidence, Low alignment): Reconnect to identity
 - Owning (High confidence, High alignment): Extend influence to others
+
+FOCUS AREAS:
+The client's primary coaching focus can be: Career, Relationships, Health & Wellness, Leadership, Sales, Entrepreneurship, or Life Transition.
 
 MORE/LESS MARKERS:
 Track what clients want more of and less of. Key insight: Every "more of" has a corresponding "less of" - explore the exchange.
@@ -150,9 +153,20 @@ function buildClientContext(client: any, engagement: any, markers: any[], snapsh
   lines.push('')
   
   if (engagement) {
+    const focusLabels: Record<string, string> = {
+      career: 'Career',
+      relationships: 'Relationships',
+      health: 'Health & Wellness',
+      leadership: 'Leadership',
+      sales: 'Sales',
+      entrepreneurship: 'Entrepreneurship',
+      transition: 'Life Transition',
+    };
+    
     lines.push('=== ENGAGEMENT ===')
     lines.push(`Phase: ${engagement.current_phase?.toUpperCase()} - Week ${engagement.current_week} of 12`)
     lines.push(`Status: ${engagement.status}`)
+    if (engagement.focus) lines.push(`Focus: ${focusLabels[engagement.focus] || engagement.focus}`)
     if (engagement.story_present) lines.push(`Present: ${engagement.story_present}`)
     if (engagement.story_past) lines.push(`Past: ${engagement.story_past}`)
     if (engagement.story_potential) lines.push(`Potential: ${engagement.story_potential}`)
