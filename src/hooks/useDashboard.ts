@@ -301,55 +301,78 @@ export function useDashboard() {
       const lastMonthStart = startOfMonth(subMonths(today, 1));
       const lastMonthEnd = subDays(thisMonthStart, 1);
 
-      console.log('17. Fetching analytics...');
-      console.log('  - This month start:', format(thisMonthStart, 'yyyy-MM-dd'));
-      console.log('  - Last month range:', format(lastMonthStart, 'yyyy-MM-dd'), 'to', format(lastMonthEnd, 'yyyy-MM-dd'));
+      console.log('=== ANALYTICS DEBUG ===');
+      console.log('17. Date ranges:', {
+        today: today.toISOString(),
+        thisMonthStart: thisMonthStart.toISOString(),
+        lastMonthStart: lastMonthStart.toISOString(),
+        lastMonthEnd: lastMonthEnd.toISOString(),
+        clientEmails
+      });
 
+      // Use ISO format for proper timestamp comparison
       const { data: thisMonthSnapshots, error: thisMonthErr } = await supabase
         .from('snapshots')
-        .select('id')
+        .select('id, created_at, client_email')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
-        .gte('created_at', format(thisMonthStart, 'yyyy-MM-dd'));
+        .gte('created_at', thisMonthStart.toISOString());
+
+      console.log('18a. This Month Snapshots Query:', {
+        filter: `created_at >= ${thisMonthStart.toISOString()}`,
+        clientEmails,
+        error: thisMonthErr,
+        count: thisMonthSnapshots?.length || 0,
+        data: thisMonthSnapshots
+      });
 
       const { data: lastMonthSnapshots, error: lastMonthErr } = await supabase
         .from('snapshots')
-        .select('id')
+        .select('id, created_at')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
-        .gte('created_at', format(lastMonthStart, 'yyyy-MM-dd'))
-        .lte('created_at', format(lastMonthEnd, 'yyyy-MM-dd'));
+        .gte('created_at', lastMonthStart.toISOString())
+        .lt('created_at', thisMonthStart.toISOString());
 
-      console.log('18. Analytics Snapshots:', {
-        thisMonth: { count: thisMonthSnapshots?.length || 0, error: thisMonthErr },
-        lastMonth: { count: lastMonthSnapshots?.length || 0, error: lastMonthErr }
+      console.log('18b. Last Month Snapshots:', {
+        filter: `created_at >= ${lastMonthStart.toISOString()} AND created_at < ${thisMonthStart.toISOString()}`,
+        error: lastMonthErr,
+        count: lastMonthSnapshots?.length || 0,
+        data: lastMonthSnapshots
       });
 
-      // Engagements by phase
+      // Engagements by phase - use ALL engagements we already fetched
       const phaseCount = { name: 0, validate: 0, communicate: 0 };
       activeEngagements.forEach(e => {
         if (e.current_phase === 'name') phaseCount.name++;
         else if (e.current_phase === 'validate') phaseCount.validate++;
         else if (e.current_phase === 'communicate') phaseCount.communicate++;
       });
-      console.log('19. Phase Distribution:', phaseCount);
+      console.log('19. Phase Distribution:', { activeEngagements: activeEngagements.length, phaseCount });
 
       // Zone distribution from recent snapshots
       const { data: zoneSnapshots, error: zoneErr } = await supabase
         .from('snapshots')
-        .select('overall_zone')
+        .select('overall_zone, client_email')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
         .order('created_at', { ascending: false })
         .limit(50);
 
-      console.log('20. Zone Snapshots:', { count: zoneSnapshots?.length || 0, error: zoneErr, data: zoneSnapshots });
+      console.log('20. Zone Snapshots:', { 
+        clientEmails,
+        error: zoneErr, 
+        count: zoneSnapshots?.length || 0, 
+        data: zoneSnapshots 
+      });
 
       const zoneCounts: Record<string, number> = {};
       zoneSnapshots?.forEach(s => {
         if (s.overall_zone) {
-          zoneCounts[s.overall_zone] = (zoneCounts[s.overall_zone] || 0) + 1;
+          const normalizedZone = s.overall_zone.toLowerCase();
+          zoneCounts[normalizedZone] = (zoneCounts[normalizedZone] || 0) + 1;
         }
       });
+      console.log('20b. Zone Counts after processing:', zoneCounts);
 
-      const analyticsResult = {
+      const analyticsResult: AnalyticsData = {
         snapshotsThisMonth: thisMonthSnapshots?.length || 0,
         snapshotsLastMonth: lastMonthSnapshots?.length || 0,
         engagementsByPhase: {
@@ -360,7 +383,7 @@ export function useDashboard() {
         zoneDistribution: Object.entries(zoneCounts).map(([zone, count]) => ({ zone, count })),
       };
       
-      console.log('21. Final Analytics:', analyticsResult);
+      console.log('21. FINAL ANALYTICS RESULT:', analyticsResult);
       console.log('=== DASHBOARD DEBUG END ===');
       
       setAnalytics(analyticsResult);
