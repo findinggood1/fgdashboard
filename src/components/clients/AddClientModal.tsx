@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 
 interface AddClientModalProps {
   open: boolean;
@@ -77,7 +78,7 @@ export function AddClientModal({ open, onOpenChange, onSubmit }: AddClientModalP
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pb-20 sm:pb-0">
           <div className="space-y-2">
             <Label htmlFor="email">Email *</Label>
             <Input
@@ -86,8 +87,16 @@ export function AddClientModal({ open, onOpenChange, onSubmit }: AddClientModalP
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="client@example.com"
+              className="min-h-[44px] text-base"
+              autoComplete="email"
+              aria-describedby={errors.email ? 'email-error' : undefined}
+              aria-invalid={!!errors.email}
             />
-            {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+            {errors.email && (
+              <p id="email-error" className="text-sm text-destructive" role="alert">
+                {errors.email}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -97,19 +106,39 @@ export function AddClientModal({ open, onOpenChange, onSubmit }: AddClientModalP
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Optional"
+              className="min-h-[44px] text-base"
+              autoComplete="name"
             />
           </div>
 
           {errors.submit && (
-            <p className="text-sm text-destructive text-center">{errors.submit}</p>
+            <p className="text-sm text-destructive text-center" role="alert">
+              {errors.submit}
+            </p>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => handleOpenChange(false)}
+              className="min-h-[44px]"
+            >
               Cancel
             </Button>
-            <Button type="submit" className="gradient-primary" disabled={submitting}>
-              {submitting ? 'Adding...' : 'Add Client'}
+            <Button 
+              type="submit" 
+              className="gradient-primary min-h-[44px]" 
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Client'
+              )}
             </Button>
           </DialogFooter>
         </form>

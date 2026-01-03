@@ -17,9 +17,10 @@ import { Button } from '@/components/ui/button';
 interface AppSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  onNavigate?: () => void;
 }
 
-export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
+export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps) {
   const { userRole, coachData, signOut } = useAuth();
   const location = useLocation();
 
@@ -71,6 +72,15 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
     },
   ].filter(item => item.show);
 
+  const handleNavClick = () => {
+    onNavigate?.();
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    onNavigate?.();
+  };
+
   return (
     <aside
       className={cn(
@@ -95,18 +105,21 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         )}
       </div>
 
-      {/* Toggle Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggle}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent"
-      >
-        <ChevronLeft className={cn(
-          'h-4 w-4 text-sidebar-foreground transition-transform',
-          collapsed && 'rotate-180'
-        )} />
-      </Button>
+      {/* Toggle Button - Hidden in mobile sheet */}
+      {onToggle && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent hidden md:flex"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <ChevronLeft className={cn(
+            'h-4 w-4 text-sidebar-foreground transition-transform',
+            collapsed && 'rotate-180'
+          )} />
+        </Button>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
@@ -118,8 +131,9 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={handleNavClick}
               className={cn(
-                'sidebar-item',
+                'sidebar-item min-h-[44px]',
                 isActive && 'sidebar-item-active'
               )}
             >
@@ -143,11 +157,12 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         )}
         <Button
           variant="ghost"
-          onClick={signOut}
+          onClick={handleSignOut}
           className={cn(
-            'w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+            'w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent min-h-[44px]',
             collapsed && 'justify-center px-2'
           )}
+          aria-label="Sign out"
         >
           <LogOut className="h-5 w-5" />
           {!collapsed && <span className="ml-3">Sign out</span>}
