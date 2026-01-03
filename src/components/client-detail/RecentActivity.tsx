@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { 
   Activity, 
   FileText, 
@@ -7,7 +9,9 @@ import {
   MessageSquare, 
   Mic, 
   CheckCircle,
-  Camera
+  Camera,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +24,7 @@ interface ActivityItem {
 
 interface RecentActivityProps {
   activities: ActivityItem[];
+  defaultLimit?: number;
 }
 
 const activityConfig: Record<string, { icon: typeof Activity; color: string; label: string }> = {
@@ -32,7 +37,12 @@ const activityConfig: Record<string, { icon: typeof Activity; color: string; lab
   file: { icon: FileText, color: 'text-muted-foreground', label: 'File' },
 };
 
-export function RecentActivity({ activities }: RecentActivityProps) {
+export function RecentActivity({ activities, defaultLimit = 5 }: RecentActivityProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const displayedActivities = isExpanded ? activities : activities.slice(0, defaultLimit);
+  const hasMore = activities.length > defaultLimit;
+
   if (activities.length === 0) {
     return (
       <Card className="shadow-soft">
@@ -61,7 +71,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activities.map((activity, idx) => {
+          {displayedActivities.map((activity) => {
             const config = activityConfig[activity.type] || activityConfig.file;
             const Icon = config.icon;
 
@@ -85,6 +95,27 @@ export function RecentActivity({ activities }: RecentActivityProps) {
             );
           })}
         </div>
+        
+        {hasMore && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full mt-4 text-muted-foreground hover:text-foreground"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-4 w-4 mr-1" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4 mr-1" />
+                See more ({activities.length - defaultLimit} more)
+              </>
+            )}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
