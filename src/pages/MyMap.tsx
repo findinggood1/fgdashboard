@@ -14,6 +14,13 @@ import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Co
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+// Phase labels for display
+const phaseLabels: Record<string, string> = {
+  name: 'NAME (CLARITY)',
+  validate: 'VALIDATE (CONFIDENCE)',
+  communicate: 'COMMUNICATE (INFLUENCE)',
+};
+
 // Local interface for what we fetch from the DB
 interface ClientMapEngagement {
   id: string;
@@ -35,6 +42,7 @@ interface ClientMapEngagement {
   weekly_creating: string | null;
   weekly_actions: WeeklyAction[] | null;
   fires_focus: any;
+  focus: string | null;
   anchor_quote: string | null;
   ai_insights_generated_at: string | null;
 }
@@ -119,7 +127,7 @@ export default function MyMap() {
             current_week, current_phase, story_present, story_past, story_potential,
             zone_interpretation, superpowers_claimed, superpowers_emerging, superpowers_hidden,
             world_asking, weekly_tracking, weekly_creating, weekly_actions,
-            fires_focus, anchor_quote, ai_insights_generated_at
+            fires_focus, focus, anchor_quote, ai_insights_generated_at
           `)
           .eq('client_email', selectedClientEmail)
           .eq('status', 'active')
@@ -250,7 +258,7 @@ export default function MyMap() {
           )}
           {engagement ? (
             <p className="text-lg text-amber-800/80">
-              Week {engagement.current_week} of 12 • <span className="capitalize font-medium">{engagement.current_phase}</span> Phase
+              Week {engagement.current_week} of 12 • <span className="font-medium">{phaseLabels[engagement.current_phase] || engagement.current_phase}</span> Phase
             </p>
           ) : selectedClientEmail ? (
             <p className="text-lg text-amber-800/60">Your personal journey awaits</p>

@@ -28,6 +28,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type ZoneFilter = 'all' | 'exploring' | 'discovering' | 'performing' | 'owning';
 type EngagementFilter = 'all' | 'active' | 'none' | 'completed';
+
+const phaseLabels: Record<string, string> = {
+  name: 'NAME (CLARITY)',
+  validate: 'VALIDATE (CONFIDENCE)',
+  communicate: 'COMMUNICATE (INFLUENCE)',
+};
 type SortOption = 'last_activity' | 'name' | 'zone';
 
 export default function Clients() {
@@ -113,7 +119,9 @@ export default function Clients() {
     if (!client.engagement_status) return 'None';
     if (client.engagement_status === 'completed') return 'Completed';
     if (client.engagement_phase && client.engagement_week !== null) {
-      return `${client.engagement_phase} - Week ${client.engagement_week}`;
+      const phaseKey = client.engagement_phase.toLowerCase();
+      const phaseDisplay = phaseLabels[phaseKey] || client.engagement_phase;
+      return `${phaseDisplay} - Week ${client.engagement_week}`;
     }
     return client.engagement_status;
   };

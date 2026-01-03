@@ -94,6 +94,7 @@ export interface CoachingEngagement {
   goals: any;
   challenges: any;
   fires_focus: any;
+  focus: string | null;
   zone_interpretation: ZoneInterpretation | null;
   superpowers_claimed: Superpower[] | null;
   superpowers_emerging: Superpower[] | null;
