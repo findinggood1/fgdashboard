@@ -74,6 +74,8 @@ export default function PortalLogin() {
         console.error('[PortalLogin] Sign in error:', error);
         if (error.message.includes('Invalid login credentials')) {
           toast.error('Invalid email or password');
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error('Please check your email and click the confirmation link before signing in.');
         } else {
           toast.error(error.message || 'Failed to sign in');
         }
