@@ -69,6 +69,7 @@ export interface MoreLessMarker {
   target_score: number | null;
   current_score: number | null;
   fires_connection: string | null;
+  exchange_insight: string | null;
   is_active: boolean;
   created_at: string;
 }

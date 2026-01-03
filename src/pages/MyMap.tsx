@@ -751,6 +751,13 @@ export default function MyMap() {
                               />
                             )}
                           </div>
+                          
+                          {/* Exchange insight */}
+                          {marker.exchange_insight && (
+                            <p className="text-sm italic text-amber-700/80 mt-2 pl-6">
+                              "{marker.exchange_insight}"
+                            </p>
+                          )}
                         </div>
                       );
                     })}
