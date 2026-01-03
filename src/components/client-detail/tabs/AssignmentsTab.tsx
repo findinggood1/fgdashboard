@@ -22,11 +22,34 @@ interface AssignmentsTabProps {
   onRefresh: () => void;
 }
 
-const PRACTICE_TYPES = [
-  { value: 'fires_snapshot', label: 'FIRES Snapshot', description: 'Complete a FIRES self-assessment' },
-  { value: 'impact_self', label: 'Impact Self', description: 'Self-verification of impact' },
-  { value: 'impact_other', label: 'Impact Other', description: 'Request feedback from others' },
+const PRACTICE_TYPE_GROUPS = [
+  {
+    phase: 'NAME Phase',
+    subtitle: 'Builds Clarity',
+    practices: [
+      { value: 'snapshot', label: 'Take Snapshot', description: 'Complete a self-assessment snapshot' },
+      { value: 'impact_self', label: 'Impact - Self', description: 'Self-verification of impact' },
+      { value: 'impact_other', label: 'Impact - Other', description: 'Request feedback from others' },
+    ],
+  },
+  {
+    phase: 'VALIDATE Phase',
+    subtitle: 'Builds Confidence',
+    practices: [
+      { value: 'validation_self', label: 'Validation - Self', description: 'Self-validation practice' },
+      { value: 'validation_other', label: 'Validation - Other', description: 'Request validation from others' },
+    ],
+  },
+  {
+    phase: 'COMMUNICATE Phase',
+    subtitle: 'Builds Influence',
+    practices: [
+      { value: 'conversation', label: 'Conversation Practice', description: 'Practice a key conversation' },
+    ],
+  },
 ];
+
+const ALL_PRACTICE_TYPES = PRACTICE_TYPE_GROUPS.flatMap(g => g.practices);
 
 export function AssignmentsTab({ assignments, clientEmail, engagementId, onRefresh }: AssignmentsTabProps) {
   const { toast } = useToast();
@@ -35,7 +58,7 @@ export function AssignmentsTab({ assignments, clientEmail, engagementId, onRefre
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Form state
-  const [practiceType, setPracticeType] = useState('fires_snapshot');
+  const [practiceType, setPracticeType] = useState('snapshot');
   const [coachNote, setCoachNote] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
 
@@ -43,7 +66,7 @@ export function AssignmentsTab({ assignments, clientEmail, engagementId, onRefre
   const pastAssignments = assignments.filter(a => ['completed', 'cancelled', 'expired'].includes(a.status));
 
   const resetForm = () => {
-    setPracticeType('fires_snapshot');
+    setPracticeType('snapshot');
     setCoachNote('');
     setDueDate(undefined);
   };
@@ -102,7 +125,7 @@ export function AssignmentsTab({ assignments, clientEmail, engagementId, onRefre
   };
 
   const getPracticeLabel = (type: string) => {
-    return PRACTICE_TYPES.find(p => p.value === type)?.label || type;
+    return ALL_PRACTICE_TYPES.find(p => p.value === type)?.label || type;
   };
 
   const getStatusBadge = (status: string) => {
@@ -234,14 +257,24 @@ export function AssignmentsTab({ assignments, clientEmail, engagementId, onRefre
           <div className="space-y-6 py-4">
             <div className="space-y-3">
               <Label>Practice Type</Label>
-              <RadioGroup value={practiceType} onValueChange={setPracticeType} className="space-y-2">
-                {PRACTICE_TYPES.map(type => (
-                  <div key={type.value} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                    <RadioGroupItem value={type.value} id={type.value} className="mt-0.5" />
-                    <label htmlFor={type.value} className="flex-1 cursor-pointer">
-                      <div className="font-medium">{type.label}</div>
-                      <div className="text-sm text-muted-foreground">{type.description}</div>
-                    </label>
+              <RadioGroup value={practiceType} onValueChange={setPracticeType} className="space-y-4">
+                {PRACTICE_TYPE_GROUPS.map(group => (
+                  <div key={group.phase} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-primary">{group.phase}</span>
+                      <span className="text-xs text-muted-foreground">({group.subtitle})</span>
+                    </div>
+                    <div className="space-y-2 pl-2 border-l-2 border-primary/20">
+                      {group.practices.map(type => (
+                        <div key={type.value} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                          <RadioGroupItem value={type.value} id={type.value} className="mt-0.5" />
+                          <label htmlFor={type.value} className="flex-1 cursor-pointer">
+                            <div className="font-medium">{type.label}</div>
+                            <div className="text-sm text-muted-foreground">{type.description}</div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </RadioGroup>
