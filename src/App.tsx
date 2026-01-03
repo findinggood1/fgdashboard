@@ -14,6 +14,7 @@ import EngagementDetail from "./pages/EngagementDetail";
 import Events from "./pages/Events";
 import Analytics from "./pages/Analytics";
 import Chat from "./pages/Chat";
+import MyMap from "./pages/MyMap";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,9 @@ const App = () => (
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/chat" element={<Chat />} />
             </Route>
+
+            {/* Client Routes */}
+            <Route path="/my/map" element={<MyMap />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
