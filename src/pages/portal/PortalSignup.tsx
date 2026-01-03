@@ -94,14 +94,9 @@ export default function PortalSignup() {
       }
 
       // Step 2: Email is in clients table and approved - create Supabase Auth account
-      const redirectUrl = `${window.location.origin}/portal`;
-      
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
       });
 
       if (signUpError) {
@@ -116,8 +111,16 @@ export default function PortalSignup() {
         return;
       }
 
-      toast.success('Account created! Check your email to confirm, then sign in.');
-      navigate('/portal/login');
+      // Check if we got a session (email confirmation disabled) or not
+      if (signUpData.session) {
+        // Auto-logged in - redirect to portal
+        toast.success('Account created successfully!');
+        navigate('/portal', { replace: true });
+      } else {
+        // Email confirmation required - show message
+        toast.success('Account created! Check your email to confirm, then sign in.');
+        navigate('/portal/login');
+      }
     } catch (err) {
       console.error('[PortalSignup] Unexpected error:', err);
       toast.error('Something went wrong. Please try again.');
