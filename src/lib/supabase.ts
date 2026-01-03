@@ -46,6 +46,7 @@ export interface Event {
 
 export interface ZoneInterpretation {
   zone?: string;
+  current_zone?: string;
   headline?: string;
   description?: string;
   the_work?: string;

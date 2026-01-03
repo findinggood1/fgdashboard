@@ -16,18 +16,20 @@ interface ClientMapEngagement {
   status: string;
   current_week: number;
   current_phase: string;
-  zone_start: string | null;
-  zone_current: string | null;
-  zone_interpretations: ZoneInterpretation[] | null;
-  superpowers: Superpower[] | null;
-  world_asking: WorldAskingInsight[] | null;
+  story_present: string | null;
+  story_past: string | null;
+  story_potential: string | null;
+  zone_interpretation: ZoneInterpretation | null;
+  superpowers_claimed: Superpower[] | null;
+  superpowers_emerging: Superpower[] | null;
+  superpowers_hidden: Superpower[] | null;
+  world_asking: WorldAskingInsight[] | string[] | null;
   weekly_tracking: string | null;
   weekly_creating: string | null;
   weekly_actions: WeeklyAction[] | null;
   fires_focus: any;
-  story_present: string | null;
-  story_past: string | null;
-  story_potential: string | null;
+  anchor_quote: string | null;
+  ai_insights_generated_at: string | null;
 }
 
 export default function MyMap() {
@@ -98,10 +100,10 @@ export default function MyMap() {
           .from('coaching_engagements')
           .select(`
             id, client_email, start_date, end_date, status,
-            current_week, current_phase, zone_start, zone_current,
-            zone_interpretations, superpowers, world_asking,
-            weekly_tracking, weekly_creating, weekly_actions,
-            fires_focus, story_present, story_past, story_potential
+            current_week, current_phase, story_present, story_past, story_potential,
+            zone_interpretation, superpowers_claimed, superpowers_emerging, superpowers_hidden,
+            world_asking, weekly_tracking, weekly_creating, weekly_actions,
+            fires_focus, anchor_quote, ai_insights_generated_at
           `)
           .eq('client_email', selectedClientEmail)
           .eq('status', 'active')
@@ -302,10 +304,11 @@ export default function MyMap() {
             </div>
 
             {/* Zone Section */}
-            {engagement.zone_current && (() => {
-              const zoneData = engagement.zone_interpretations?.find(
-                (z) => z.zone === engagement.zone_current
-              );
+            {engagement.zone_interpretation && (() => {
+              const zoneData = engagement.zone_interpretation;
+              const currentZone = zoneData.zone || zoneData.current_zone;
+              
+              if (!currentZone) return null;
               
               // Zone-specific colors
               const zoneColors: Record<string, { bg: string; border: string; text: string; accent: string; badge: string }> = {
@@ -337,9 +340,18 @@ export default function MyMap() {
                   accent: 'text-slate-600',
                   badge: 'bg-slate-500'
                 },
+                'Owning': { 
+                  bg: 'from-purple-50 to-violet-50', 
+                  border: 'border-purple-300', 
+                  text: 'text-purple-900',
+                  accent: 'text-purple-600',
+                  badge: 'bg-purple-500'
+                },
               };
               
-              const colors = zoneColors[engagement.zone_current] || zoneColors['Performing'];
+              // Capitalize zone name for lookup
+              const zoneKey = currentZone.charAt(0).toUpperCase() + currentZone.slice(1).toLowerCase();
+              const colors = zoneColors[zoneKey] || zoneColors['Performing'];
               
               return (
                 <Card className={`${colors.border} bg-gradient-to-br ${colors.bg} shadow-xl overflow-hidden`}>
@@ -350,9 +362,9 @@ export default function MyMap() {
                       </div>
                       <div className="flex-1">
                         <h2 className={`text-2xl font-bold ${colors.text} mb-1`}>
-                          {engagement.zone_current.toUpperCase()}
+                          {zoneKey.toUpperCase()}
                         </h2>
-                        {zoneData?.headline && (
+                        {zoneData.headline && (
                           <p className={`text-sm font-medium ${colors.accent}`}>
                             {zoneData.headline}
                           </p>
@@ -360,7 +372,7 @@ export default function MyMap() {
                       </div>
                     </div>
                     
-                    {zoneData?.description && (
+                    {zoneData.description && (
                       <div className="mb-6">
                         <p className={`${colors.text} leading-relaxed`}>
                           {zoneData.description}
@@ -368,7 +380,7 @@ export default function MyMap() {
                       </div>
                     )}
                     
-                    {zoneData?.the_work && (
+                    {zoneData.the_work && (
                       <div className={`p-4 rounded-lg bg-white/60 border ${colors.border}/50 mb-4`}>
                         <h3 className={`text-xs font-semibold uppercase tracking-wider ${colors.accent} mb-2`}>
                           The Work
@@ -379,7 +391,7 @@ export default function MyMap() {
                       </div>
                     )}
                     
-                    {zoneData?.custom_note && (
+                    {zoneData.custom_note && (
                       <div className={`p-4 rounded-lg bg-white/40 border ${colors.border}/30`}>
                         <h3 className={`text-xs font-semibold uppercase tracking-wider ${colors.accent} mb-2`}>
                           Coach Note
@@ -394,27 +406,74 @@ export default function MyMap() {
               );
             })()}
             {/* Superpowers */}
-            {engagement.superpowers && engagement.superpowers.length > 0 && (
+            {(engagement.superpowers_claimed?.length || engagement.superpowers_emerging?.length || engagement.superpowers_hidden?.length) && (
               <Card className="border-amber-200/50 bg-white/70 backdrop-blur shadow-xl">
                 <CardContent className="py-8">
                   <h2 className="text-xl font-semibold text-amber-900 mb-6 flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-amber-500" />
                     Your Superpowers
                   </h2>
-                  <div className="space-y-4">
-                    {engagement.superpowers.map((sp, index) => (
-                      <div key={index} className="p-4 rounded-lg bg-amber-50/50 border border-amber-200/50">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                            {sp.fires_element}
-                          </Badge>
+                  <div className="space-y-6">
+                    {engagement.superpowers_claimed && engagement.superpowers_claimed.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-amber-700 mb-3">Claimed</h3>
+                        <div className="space-y-3">
+                          {engagement.superpowers_claimed.map((sp, index) => (
+                            <div key={index} className="p-4 rounded-lg bg-amber-50/50 border border-amber-200/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                                  {sp.fires_element}
+                                </Badge>
+                              </div>
+                              <p className="font-medium text-amber-900">{sp.superpower}</p>
+                              {sp.description && (
+                                <p className="text-sm text-amber-700/70 mt-1">{sp.description}</p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                        <p className="font-medium text-amber-900">{sp.superpower}</p>
-                        {sp.evidence && (
-                          <p className="text-sm text-amber-700/70 mt-1">{sp.evidence}</p>
-                        )}
                       </div>
-                    ))}
+                    )}
+                    {engagement.superpowers_emerging && engagement.superpowers_emerging.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-blue-700 mb-3">Emerging</h3>
+                        <div className="space-y-3">
+                          {engagement.superpowers_emerging.map((sp, index) => (
+                            <div key={index} className="p-4 rounded-lg bg-blue-50/50 border border-blue-200/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                                  {sp.fires_element}
+                                </Badge>
+                              </div>
+                              <p className="font-medium text-blue-900">{sp.superpower}</p>
+                              {sp.description && (
+                                <p className="text-sm text-blue-700/70 mt-1">{sp.description}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {engagement.superpowers_hidden && engagement.superpowers_hidden.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-purple-700 mb-3">Hidden</h3>
+                        <div className="space-y-3">
+                          {engagement.superpowers_hidden.map((sp, index) => (
+                            <div key={index} className="p-4 rounded-lg bg-purple-50/50 border border-purple-200/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">
+                                  {sp.fires_element}
+                                </Badge>
+                              </div>
+                              <p className="font-medium text-purple-900">{sp.superpower}</p>
+                              {sp.description && (
+                                <p className="text-sm text-purple-700/70 mt-1">{sp.description}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -514,7 +573,8 @@ export default function MyMap() {
 
             {/* Empty state when engagement exists but no content yet */}
             {!engagement.story_present && !engagement.story_past && !engagement.story_potential &&
-             (!engagement.superpowers || engagement.superpowers.length === 0) &&
+             (!engagement.superpowers_claimed || engagement.superpowers_claimed.length === 0) &&
+             (!engagement.superpowers_emerging || engagement.superpowers_emerging.length === 0) &&
              (!engagement.world_asking || engagement.world_asking.length === 0) &&
              !engagement.weekly_tracking && !engagement.weekly_creating &&
              (!engagement.weekly_actions || engagement.weekly_actions.length === 0) && (
