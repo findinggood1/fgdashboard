@@ -59,6 +59,16 @@ export interface ClientAssessment {
   created_at: string;
 }
 
+export interface MoreLessUpdate {
+  id: string;
+  marker_id: string;
+  update_date: string;
+  score: number;
+  source: string | null;
+  note: string | null;
+  created_at: string;
+}
+
 export interface MoreLessMarker {
   id: string;
   client_email: string;
@@ -72,6 +82,7 @@ export interface MoreLessMarker {
   exchange_insight: string | null;
   is_active: boolean;
   created_at: string;
+  updates?: MoreLessUpdate[];
 }
 
 export interface CoachingNote {
@@ -83,6 +94,7 @@ export interface CoachingNote {
   coach_curiosity: string | null;
   coach_next: string | null;
   coach_trap: string | null;
+  related_session_id: string | null;
   created_at: string;
 }
 
@@ -200,6 +212,30 @@ export function useClientDetail(email: string | undefined) {
       // Check for errors
       if (clientResult.error) throw clientResult.error;
 
+      // Fetch updates for all markers
+      const markersData = markersResult.data || [];
+      let markersWithUpdates: MoreLessMarker[] = markersData;
+
+      if (markersData.length > 0) {
+        const markerIds = markersData.map((m) => m.id);
+        const { data: updatesData } = await supabase
+          .from('more_less_updates')
+          .select('*')
+          .in('marker_id', markerIds)
+          .order('update_date', { ascending: false });
+
+        const updatesByMarker = (updatesData || []).reduce((acc, update) => {
+          if (!acc[update.marker_id]) acc[update.marker_id] = [];
+          acc[update.marker_id].push(update);
+          return acc;
+        }, {} as Record<string, MoreLessUpdate[]>);
+
+        markersWithUpdates = markersData.map((marker) => ({
+          ...marker,
+          updates: updatesByMarker[marker.id] || [],
+        }));
+      }
+
       setData({
         client: clientResult.data,
         engagement: engagementResult.data,
@@ -207,7 +243,7 @@ export function useClientDetail(email: string | undefined) {
         impactVerifications: impactsResult.data || [],
         sessions: sessionsResult.data || [],
         assessments: assessmentsResult.data || [],
-        markers: markersResult.data || [],
+        markers: markersWithUpdates,
         notes: notesResult.data || [],
         memos: memosResult.data || [],
         assignments: assignmentsResult.data || [],
