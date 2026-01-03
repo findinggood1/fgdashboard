@@ -85,6 +85,7 @@ export interface CoachingEngagement {
   client_email: string;
   coach_id: string;
   start_date: string;
+  end_date: string | null;
   current_phase: string;
   current_week: number;
   status: string;
