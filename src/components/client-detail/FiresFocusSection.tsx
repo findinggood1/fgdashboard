@@ -10,7 +10,7 @@ interface FiresFocusSectionProps {
   latestSnapshot: Snapshot | null;
 }
 
-const firesElements = ['Focus', 'Integrity', 'Resilience', 'Ethics', 'Social'];
+const firesElements = ['Feelings', 'Influence', 'Resilience', 'Ethics', 'Strengths'];
 
 export function FiresFocusSection({ engagement, latestSnapshot }: FiresFocusSectionProps) {
   if (!engagement) return null;

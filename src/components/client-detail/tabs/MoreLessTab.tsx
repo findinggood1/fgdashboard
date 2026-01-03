@@ -25,11 +25,11 @@ interface MoreLessTabProps {
 }
 
 const FIRES_OPTIONS = [
-  { value: 'feelings', label: 'Feelings' },
-  { value: 'influence', label: 'Influence' },
-  { value: 'resilience', label: 'Resilience' },
-  { value: 'ethics', label: 'Ethics' },
-  { value: 'strengths', label: 'Strengths' },
+  { value: 'feelings', label: 'Feelings', description: 'Emotional awareness and regulation' },
+  { value: 'influence', label: 'Influence', description: 'Locus of control and agency' },
+  { value: 'resilience', label: 'Resilience', description: 'Growth through difficulty' },
+  { value: 'ethics', label: 'Ethics', description: 'Values alignment and purpose' },
+  { value: 'strengths', label: 'Strengths', description: 'Capability confidence and self-efficacy' },
 ];
 
 const SOURCE_OPTIONS = [

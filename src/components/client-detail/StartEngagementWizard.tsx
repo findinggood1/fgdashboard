@@ -44,19 +44,19 @@ interface MarkerItem {
 }
 
 const FIRES_LEVERS = [
-  { value: 'fulfillment', label: 'Fulfillment' },
-  { value: 'impact', label: 'Impact' },
-  { value: 'relationships', label: 'Relationships' },
-  { value: 'engagement', label: 'Engagement' },
-  { value: 'structure', label: 'Structure' },
+  { value: 'feelings', label: 'Feelings' },
+  { value: 'influence', label: 'Influence' },
+  { value: 'resilience', label: 'Resilience' },
+  { value: 'ethics', label: 'Ethics' },
+  { value: 'strengths', label: 'Strengths' },
 ];
 
 const FIRES_OPTIONS = [
-  { key: 'fulfillment', label: 'Fulfillment', description: 'Sense of meaning and purpose in work' },
-  { key: 'impact', label: 'Impact', description: 'Visible results and contribution to outcomes' },
-  { key: 'relationships', label: 'Relationships', description: 'Quality of connections with colleagues and stakeholders' },
-  { key: 'engagement', label: 'Engagement', description: 'Level of energy and enthusiasm for daily work' },
-  { key: 'structure', label: 'Structure', description: 'Clarity of role, processes, and expectations' },
+  { key: 'feelings', label: 'Feelings', description: 'Emotional awareness and regulation' },
+  { key: 'influence', label: 'Influence', description: 'Locus of control and agency' },
+  { key: 'resilience', label: 'Resilience', description: 'Growth through difficulty' },
+  { key: 'ethics', label: 'Ethics', description: 'Values alignment and purpose' },
+  { key: 'strengths', label: 'Strengths', description: 'Capability confidence and self-efficacy' },
 ];
 
 const STEPS = [
