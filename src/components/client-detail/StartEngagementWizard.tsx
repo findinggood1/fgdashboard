@@ -74,7 +74,8 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
 
   // Step 1: Basics
   const [startDate, setStartDate] = useState<Date>(nextMonday(new Date()));
-  const [primaryArena, setPrimaryArena] = useState<string>('team');
+  const [focus, setFocus] = useState<string>('');
+  const [focusOther, setFocusOther] = useState<string>('');
 
   // Step 2: The Story
   const [storyPresent, setStoryPresent] = useState('');
@@ -94,7 +95,8 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
   const resetForm = () => {
     setStep(1);
     setStartDate(nextMonday(new Date()));
-    setPrimaryArena('team');
+    setFocus('');
+    setFocusOther('');
     setStoryPresent('');
     setStoryPast('');
     setStoryPotential('');
@@ -164,7 +166,7 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
   const canProceed = () => {
     switch (step) {
       case 1:
-        return startDate && primaryArena;
+        return startDate && focus && (focus !== 'other' || focusOther.trim());
       case 2:
         return true; // All optional
       case 3:
@@ -206,7 +208,7 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
           current_phase: 'name',
           current_week: 1,
           status: 'active',
-          primary_arena: primaryArena,
+          focus: focus === 'other' ? `other:${focusOther.trim()}` : focus,
           story_present: storyPresent.trim() || null,
           story_past: storyPast.trim() || null,
           story_potential: storyPotential.trim() || null,
@@ -277,8 +279,77 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
     </div>
   );
 
+  const FOCUS_OPTIONS = {
+    professional: [
+      { value: 'sales', label: 'Sales / Business Development', description: 'Focus on client acquisition, pipeline, closing' },
+      { value: 'communication', label: 'Communication / Influence', description: 'Focus on how they express, present, and persuade' },
+      { value: 'leadership', label: 'Leadership / Management', description: 'Focus on managing and developing others' },
+      { value: 'growth', label: 'Professional Growth', description: 'Focus on career trajectory and advancement' },
+      { value: 'team', label: 'Team Dynamics', description: 'Focus on collaboration and team effectiveness' },
+      { value: 'transition', label: 'Role Transition', description: 'Focus on navigating a new role or direction' },
+    ],
+    personal: [
+      { value: 'health', label: 'Health & Wellness', description: 'Focus on physical or mental wellbeing' },
+      { value: 'relationships', label: 'Relationships', description: 'Focus on family, romantic, or social connections' },
+      { value: 'finances', label: 'Finances', description: 'Focus on money and wealth building' },
+      { value: 'other', label: 'Other', description: 'Custom focus area' },
+    ],
+  };
+
   const renderStep1 = () => (
     <div className="space-y-6">
+      <div className="space-y-3">
+        <div>
+          <Label>Primary Focus</Label>
+          <p className="text-sm text-muted-foreground mt-1">What area of life/work is this engagement centered on?</p>
+        </div>
+        
+        <RadioGroup value={focus} onValueChange={setFocus} className="space-y-4">
+          {/* Professional Section */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Professional</p>
+            <div className="space-y-2">
+              {FOCUS_OPTIONS.professional.map(opt => (
+                <div key={opt.value} className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                  <RadioGroupItem value={opt.value} id={`focus-${opt.value}`} />
+                  <label htmlFor={`focus-${opt.value}`} className="flex-1 cursor-pointer">
+                    <div className="font-medium">{opt.label}</div>
+                    <div className="text-sm text-muted-foreground">{opt.description}</div>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Personal Section */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Personal</p>
+            <div className="space-y-2">
+              {FOCUS_OPTIONS.personal.map(opt => (
+                <div key={opt.value} className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                  <RadioGroupItem value={opt.value} id={`focus-${opt.value}`} />
+                  <label htmlFor={`focus-${opt.value}`} className="flex-1 cursor-pointer">
+                    <div className="font-medium">{opt.label}</div>
+                    <div className="text-sm text-muted-foreground">{opt.description}</div>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </RadioGroup>
+
+        {focus === 'other' && (
+          <div className="pl-8">
+            <Input
+              value={focusOther}
+              onChange={(e) => setFocusOther(e.target.value)}
+              placeholder="Describe the custom focus area..."
+              className="mt-2"
+            />
+          </div>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label>Start Date</Label>
         <Popover>
@@ -298,33 +369,6 @@ export function StartEngagementWizard({ open, onOpenChange, clientEmail, onSucce
             />
           </PopoverContent>
         </Popover>
-      </div>
-
-      <div className="space-y-3">
-        <Label>Primary Arena</Label>
-        <RadioGroup value={primaryArena} onValueChange={setPrimaryArena} className="space-y-2">
-          <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-            <RadioGroupItem value="team" id="arena-team" />
-            <label htmlFor="arena-team" className="flex-1 cursor-pointer">
-              <div className="font-medium">Team</div>
-              <div className="text-sm text-muted-foreground">Focus on managing and leading their team</div>
-            </label>
-          </div>
-          <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-            <RadioGroupItem value="clients" id="arena-clients" />
-            <label htmlFor="arena-clients" className="flex-1 cursor-pointer">
-              <div className="font-medium">Clients</div>
-              <div className="text-sm text-muted-foreground">Focus on client relationships and outcomes</div>
-            </label>
-          </div>
-          <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-            <RadioGroupItem value="both" id="arena-both" />
-            <label htmlFor="arena-both" className="flex-1 cursor-pointer">
-              <div className="font-medium">Both</div>
-              <div className="text-sm text-muted-foreground">Balance between team leadership and client work</div>
-            </label>
-          </div>
-        </RadioGroup>
       </div>
     </div>
   );
