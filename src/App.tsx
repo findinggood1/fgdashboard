@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 
 import Login from "./pages/Login";
 import DashboardLayout from "./layouts/DashboardLayout";
+import PortalLayout from "./layouts/PortalLayout";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
@@ -18,6 +19,14 @@ import CoachChat from "./pages/CoachChat";
 import MyMap from "./pages/MyMap";
 import NotFound from "./pages/NotFound";
 
+// Portal pages
+import PortalHome from "./pages/portal/PortalHome";
+import PortalJourney from "./pages/portal/PortalJourney";
+import PortalChat from "./pages/portal/PortalChat";
+import AccessPending from "./pages/portal/AccessPending";
+import AccessRevoked from "./pages/portal/AccessRevoked";
+import NoAccount from "./pages/portal/NoAccount";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -28,10 +37,15 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             
-            {/* Protected Routes */}
+            {/* Status pages (no layout) */}
+            <Route path="/access-pending" element={<AccessPending />} />
+            <Route path="/access-revoked" element={<AccessRevoked />} />
+            <Route path="/no-account" element={<NoAccount />} />
+            
+            {/* Coach/Admin Protected Routes */}
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
@@ -43,7 +57,14 @@ const App = () => (
               <Route path="/coach/chat" element={<CoachChat />} />
             </Route>
 
-            {/* Client Routes */}
+            {/* Client Portal Routes */}
+            <Route element={<PortalLayout />}>
+              <Route path="/portal" element={<PortalHome />} />
+              <Route path="/portal/journey" element={<PortalJourney />} />
+              <Route path="/portal/chat" element={<PortalChat />} />
+            </Route>
+
+            {/* Legacy Client Routes */}
             <Route path="/my/map" element={<MyMap />} />
 
             <Route path="*" element={<NotFound />} />
