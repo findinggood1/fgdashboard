@@ -121,6 +121,7 @@ export interface Assignment {
   status: string;
   coach_note: string | null;
   due_date: string | null;
+  completed_at: string | null;
   created_at: string;
 }
 
