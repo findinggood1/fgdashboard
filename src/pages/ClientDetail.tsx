@@ -123,7 +123,7 @@ export default function ClientDetail() {
         <TabsContent value="snapshots"><SnapshotsTab snapshots={snapshots} /></TabsContent>
         <TabsContent value="impact"><ImpactTab impacts={impactVerifications} /></TabsContent>
         <TabsContent value="files"><FilesTab files={files} /></TabsContent>
-        <TabsContent value="moreless"><MoreLessTab markers={markers} /></TabsContent>
+        <TabsContent value="moreless"><MoreLessTab markers={markers} onRefresh={refetch} /></TabsContent>
         <TabsContent value="notes"><NotesTab notes={notes} /></TabsContent>
         <TabsContent value="narrative-map"><NarrativeMapTab engagement={engagement} clientName={client?.name} latestSnapshot={latestSnapshot} refetch={refetch} /></TabsContent>
       </Tabs>
