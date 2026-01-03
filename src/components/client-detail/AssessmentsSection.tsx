@@ -26,6 +26,7 @@ interface AssessmentsSectionProps {
 
 const ASSESSMENT_TYPES = [
   { value: 'intake', label: 'Intake Assessment' },
+  { value: 'integrity_primer', label: 'Integrity Primer' },
   { value: 'progress', label: 'Progress Check' },
   { value: 'personality', label: 'Personality Assessment' },
   { value: '360_feedback', label: '360 Feedback' },
@@ -33,6 +34,30 @@ const ASSESSMENT_TYPES = [
   { value: 'strengths', label: 'Strengths Assessment' },
   { value: 'other', label: 'Other' },
 ];
+
+const INTEGRITY_PRIMER_QUESTIONS = {
+  clarity: [
+    "I can clearly articulate my core values and what matters most to me.",
+    "I understand the patterns in my past that have shaped who I am today.",
+    "I have a clear vision of the leader/person I want to become.",
+    "I can identify my strengths and how they show up in my work.",
+    "I understand what drains my energy vs. what energizes me.",
+  ],
+  confidence: [
+    "I trust my ability to handle difficult conversations.",
+    "I believe I can make meaningful changes in my leadership style.",
+    "I feel confident making decisions even with incomplete information.",
+    "I can recover quickly from setbacks and criticism.",
+    "I believe I have what it takes to achieve my goals.",
+  ],
+  influence: [
+    "I can effectively communicate my ideas to different audiences.",
+    "Others would say I listen well and make them feel heard.",
+    "I can inspire and motivate others toward a shared vision.",
+    "I navigate conflict in a way that strengthens relationships.",
+    "I help others see their own potential and grow.",
+  ],
+};
 
 export function AssessmentsSection({ assessments, clientEmail, engagementId, onRefresh, onUploadFile }: AssessmentsSectionProps) {
   const { toast } = useToast();
@@ -61,6 +86,13 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
     notes: '',
   });
 
+  // Integrity Primer state
+  const [primerScores, setPrimerScores] = useState<Record<string, Record<number, number>>>({
+    clarity: {},
+    confidence: {},
+    influence: {},
+  });
+
   const resetForm = () => {
     setIntakeData({
       role: '',
@@ -74,7 +106,70 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
       sessionPreferences: '',
     });
     setQuickData({ name: '', type: 'progress', notes: '' });
+    setPrimerScores({ clarity: {}, confidence: {}, influence: {} });
     setActiveTab('intake');
+  };
+
+  const handlePrimerScoreChange = (section: string, questionIndex: number, score: number) => {
+    setPrimerScores(prev => ({
+      ...prev,
+      [section]: { ...prev[section], [questionIndex]: score },
+    }));
+  };
+
+  const calculateSectionAverage = (section: string): number | null => {
+    const scores = Object.values(primerScores[section]);
+    if (scores.length === 0) return null;
+    const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+    return Math.round(avg * 10) / 10;
+  };
+
+  const isPrimerComplete = () => {
+    const sections = ['clarity', 'confidence', 'influence'];
+    return sections.every(section => 
+      Object.keys(primerScores[section]).length === INTEGRITY_PRIMER_QUESTIONS[section as keyof typeof INTEGRITY_PRIMER_QUESTIONS].length
+    );
+  };
+
+  const handleSavePrimer = async () => {
+    if (!isPrimerComplete()) {
+      toast({ title: 'Please answer all questions', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const scores = {
+        clarity: calculateSectionAverage('clarity'),
+        confidence: calculateSectionAverage('confidence'),
+        influence: calculateSectionAverage('influence'),
+      };
+
+      const { error } = await supabase
+        .from('client_assessments')
+        .insert({
+          client_email: clientEmail,
+          engagement_id: engagementId || null,
+          assessment_type: 'integrity_primer',
+          assessment_name: 'Integrity Primer',
+          assessment_date: new Date().toISOString().split('T')[0],
+          scores,
+          responses: primerScores,
+          status: 'completed',
+        });
+
+      if (error) throw error;
+
+      toast({ title: 'Integrity Primer saved', description: 'Assessment has been recorded.' });
+      setAddModalOpen(false);
+      resetForm();
+      onRefresh();
+    } catch (err) {
+      console.error('Error saving primer:', err);
+      toast({ title: 'Failed to save assessment', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveIntake = async () => {
@@ -254,9 +349,10 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="intake">Standard Intake</TabsTrigger>
-              <TabsTrigger value="quick">Quick Assessment</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="intake">Intake</TabsTrigger>
+              <TabsTrigger value="primer">Integrity Primer</TabsTrigger>
+              <TabsTrigger value="quick">Quick</TabsTrigger>
               <TabsTrigger value="upload">Upload</TabsTrigger>
             </TabsList>
 
@@ -403,6 +499,109 @@ export function AssessmentsSection({ assessments, clientEmail, engagementId, onR
                 <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveQuick} disabled={saving}>
                   {saving ? 'Saving...' : 'Save Assessment'}
+                </Button>
+              </DialogFooter>
+            </TabsContent>
+
+            <TabsContent value="primer" className="space-y-6 mt-4">
+              <p className="text-sm text-muted-foreground">
+                Rate each statement from 1 (strongly disagree) to 10 (strongly agree).
+              </p>
+
+              {/* Clarity Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-primary">CLARITY</h4>
+                  {calculateSectionAverage('clarity') !== null && (
+                    <Badge variant="secondary">Avg: {calculateSectionAverage('clarity')}</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">How clearly do you see your story?</p>
+                {INTEGRITY_PRIMER_QUESTIONS.clarity.map((q, idx) => (
+                  <div key={`clarity-${idx}`} className="space-y-2">
+                    <p className="text-sm">{q}</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                        <Button
+                          key={score}
+                          type="button"
+                          size="sm"
+                          variant={primerScores.clarity[idx] === score ? "default" : "outline"}
+                          className="w-8 h-8 p-0"
+                          onClick={() => handlePrimerScoreChange('clarity', idx, score)}
+                        >
+                          {score}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Confidence Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-primary">CONFIDENCE</h4>
+                  {calculateSectionAverage('confidence') !== null && (
+                    <Badge variant="secondary">Avg: {calculateSectionAverage('confidence')}</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">How confident are you that you can act on it?</p>
+                {INTEGRITY_PRIMER_QUESTIONS.confidence.map((q, idx) => (
+                  <div key={`confidence-${idx}`} className="space-y-2">
+                    <p className="text-sm">{q}</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                        <Button
+                          key={score}
+                          type="button"
+                          size="sm"
+                          variant={primerScores.confidence[idx] === score ? "default" : "outline"}
+                          className="w-8 h-8 p-0"
+                          onClick={() => handlePrimerScoreChange('confidence', idx, score)}
+                        >
+                          {score}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Influence Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-primary">INFLUENCE</h4>
+                  {calculateSectionAverage('influence') !== null && (
+                    <Badge variant="secondary">Avg: {calculateSectionAverage('influence')}</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">How effectively can you communicate and help others?</p>
+                {INTEGRITY_PRIMER_QUESTIONS.influence.map((q, idx) => (
+                  <div key={`influence-${idx}`} className="space-y-2">
+                    <p className="text-sm">{q}</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                        <Button
+                          key={score}
+                          type="button"
+                          size="sm"
+                          variant={primerScores.influence[idx] === score ? "default" : "outline"}
+                          className="w-8 h-8 p-0"
+                          onClick={() => handlePrimerScoreChange('influence', idx, score)}
+                        >
+                          {score}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleSavePrimer} disabled={saving || !isPrimerComplete()}>
+                  {saving ? 'Saving...' : 'Save Primer'}
                 </Button>
               </DialogFooter>
             </TabsContent>
