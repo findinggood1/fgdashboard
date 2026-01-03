@@ -67,7 +67,7 @@ export function NotesTab({ notes, memos, sessions, clientEmail, onRefresh }: Not
           note_date: new Date().toISOString().split('T')[0],
           content: noteContent.trim(),
           session_type: sessionType,
-          related_session_id: linkedSession || null,
+          related_session_id: linkedSession && linkedSession !== 'none' ? linkedSession : null,
           coach_curiosity: coachCuriosity.trim() || null,
           coach_next: coachNext.trim() || null,
           coach_trap: coachTrap.trim() || null,
@@ -184,7 +184,7 @@ export function NotesTab({ notes, memos, sessions, clientEmail, onRefresh }: Not
                     <SelectValue placeholder="Select a session" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {recentSessions.map((session) => (
                       <SelectItem key={session.id} value={session.id}>
                         {format(new Date(session.session_date), 'MMM d, yyyy')} - {session.session_type || `Session ${session.session_number}`}
