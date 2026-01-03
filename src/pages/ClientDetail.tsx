@@ -86,7 +86,7 @@ export default function ClientDetail() {
         latestSnapshot={latestSnapshot}
         onAddNote={() => handleAction('Add Note')}
         onAddSession={() => handleAction('Add Session')}
-        onUploadFile={() => handleAction('Upload File')}
+        onUploadFile={() => setActiveTab('files')}
         onStartEngagement={() => handleAction('Start Engagement')}
       />
 
