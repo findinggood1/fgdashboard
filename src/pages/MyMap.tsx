@@ -5,7 +5,7 @@ import { supabase, Client, Superpower, WorldAskingInsight, WeeklyAction } from '
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle } from 'lucide-react';
+import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote } from 'lucide-react';
 
 // Local interface for what we fetch from the DB
 interface ClientMapEngagement {
@@ -26,9 +26,9 @@ interface ClientMapEngagement {
   weekly_creating: string | null;
   weekly_actions: WeeklyAction[] | null;
   fires_focus: any;
-  story_lived: string | null;
-  story_told: string | null;
-  story_living: string | null;
+  story_present: string | null;
+  story_past: string | null;
+  story_potential: string | null;
 }
 
 export default function MyMap() {
@@ -99,7 +99,7 @@ export default function MyMap() {
             current_week, current_phase, zone_start, zone_current,
             zone_interpretations, superpowers, world_asking,
             weekly_tracking, weekly_creating, weekly_actions,
-            fires_focus, story_lived, story_told, story_living
+            fires_focus, story_present, story_past, story_potential
           `)
           .eq('client_email', selectedClientEmail)
           .eq('status', 'active')
@@ -237,37 +237,65 @@ export default function MyMap() {
         {/* Engagement Content */}
         {!loading && engagement && (
           <div className="space-y-8">
-            {/* Story Sections */}
-            {(engagement.story_lived || engagement.story_told || engagement.story_living) && (
-              <Card className="border-amber-200/50 bg-white/70 backdrop-blur shadow-xl">
-                <CardContent className="py-8">
-                  <h2 className="text-xl font-semibold text-amber-900 mb-6 flex items-center gap-2">
-                    <Heart className="h-5 w-5 text-rose-500" />
-                    Your Story
-                  </h2>
-                  <div className="space-y-6">
-                    {engagement.story_lived && (
-                      <div>
-                        <h3 className="text-sm font-medium text-amber-700 uppercase tracking-wide mb-2">Story Lived</h3>
-                        <p className="text-amber-900">{engagement.story_lived}</p>
+            {/* The Story - 3Ps Section */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-amber-900 flex items-center gap-2">
+                <Heart className="h-5 w-5 text-rose-500" />
+                The Story
+              </h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Present */}
+                <Card className="border-amber-200/50 bg-gradient-to-br from-amber-50 to-orange-50/50 shadow-lg overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-amber-200/50 flex items-center justify-center">
+                        <Quote className="h-4 w-4 text-amber-700" />
                       </div>
-                    )}
-                    {engagement.story_told && (
-                      <div>
-                        <h3 className="text-sm font-medium text-amber-700 uppercase tracking-wide mb-2">Story Told</h3>
-                        <p className="text-amber-900">{engagement.story_told}</p>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-amber-600">Present</span>
+                    </div>
+                    <p className="text-amber-900 italic leading-relaxed">
+                      {engagement.story_present ? `"${engagement.story_present}"` : (
+                        <span className="text-amber-500 not-italic">Not yet defined</span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Past */}
+                <Card className="border-rose-200/50 bg-gradient-to-br from-rose-50 to-pink-50/50 shadow-lg overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-rose-200/50 flex items-center justify-center">
+                        <Quote className="h-4 w-4 text-rose-700" />
                       </div>
-                    )}
-                    {engagement.story_living && (
-                      <div>
-                        <h3 className="text-sm font-medium text-amber-700 uppercase tracking-wide mb-2">Story Living</h3>
-                        <p className="text-amber-900">{engagement.story_living}</p>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-rose-600">Past</span>
+                    </div>
+                    <p className="text-amber-900 italic leading-relaxed">
+                      {engagement.story_past ? `"${engagement.story_past}"` : (
+                        <span className="text-amber-500 not-italic">Not yet defined</span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Potential */}
+                <Card className="border-orange-200/50 bg-gradient-to-br from-orange-50 to-amber-50/50 shadow-lg overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-orange-200/50 flex items-center justify-center">
+                        <Quote className="h-4 w-4 text-orange-700" />
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                      <span className="text-xs font-semibold uppercase tracking-wider text-orange-600">Potential</span>
+                    </div>
+                    <p className="text-amber-900 italic leading-relaxed">
+                      {engagement.story_potential ? `"${engagement.story_potential}"` : (
+                        <span className="text-amber-500 not-italic">Not yet defined</span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
             {/* Superpowers */}
             {engagement.superpowers && engagement.superpowers.length > 0 && (
@@ -389,7 +417,7 @@ export default function MyMap() {
             )}
 
             {/* Empty state when engagement exists but no content yet */}
-            {!engagement.story_lived && !engagement.story_told && !engagement.story_living &&
+            {!engagement.story_present && !engagement.story_past && !engagement.story_potential &&
              (!engagement.superpowers || engagement.superpowers.length === 0) &&
              (!engagement.world_asking || engagement.world_asking.length === 0) &&
              !engagement.weekly_tracking && !engagement.weekly_creating &&
