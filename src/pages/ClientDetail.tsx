@@ -13,6 +13,7 @@ import { FiresFocusSection } from '@/components/client-detail/FiresFocusSection'
 import { MoreLessSummary } from '@/components/client-detail/MoreLessSummary';
 import { RecentActivity } from '@/components/client-detail/RecentActivity';
 import { AssessmentsSection } from '@/components/client-detail/AssessmentsSection';
+import { StartEngagementWizard } from '@/components/client-detail/StartEngagementWizard';
 import { SessionsTab } from '@/components/client-detail/tabs/SessionsTab';
 import { SnapshotsTab } from '@/components/client-detail/tabs/SnapshotsTab';
 import { ImpactTab } from '@/components/client-detail/tabs/ImpactTab';
@@ -28,6 +29,7 @@ export default function ClientDetail() {
   const { toast } = useToast();
   const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
+  const [engagementWizardOpen, setEngagementWizardOpen] = useState(false);
 
   const latestSnapshot = snapshots[0] || null;
 
@@ -89,7 +91,14 @@ export default function ClientDetail() {
         onAddNote={() => handleAction('Add Note')}
         onAddSession={() => handleAction('Add Session')}
         onUploadFile={() => setActiveTab('files')}
-        onStartEngagement={() => handleAction('Start Engagement')}
+        onStartEngagement={() => setEngagementWizardOpen(true)}
+      />
+
+      <StartEngagementWizard
+        open={engagementWizardOpen}
+        onOpenChange={setEngagementWizardOpen}
+        clientEmail={client.email}
+        onSuccess={refetch}
       />
 
       <ClientSummaryCards latestSnapshot={latestSnapshot} lastActivity={lastActivity} />
