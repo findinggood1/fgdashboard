@@ -13,7 +13,13 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Keep a single context instance even during Vite HMR / fast refresh.
+const AUTH_CONTEXT_KEY = '__FG_AUTH_CONTEXT__';
+const AuthContext = (
+  ((globalThis as any)[AUTH_CONTEXT_KEY] as React.Context<AuthContextType | undefined> | undefined) ??
+  createContext<AuthContextType | undefined>(undefined)
+);
+(globalThis as any)[AUTH_CONTEXT_KEY] = AuthContext;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
