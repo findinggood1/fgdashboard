@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,30 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, userRole, clientData, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Handle routing after auth state is determined
+  useEffect(() => {
+    if (loading || !user) return;
+
+    // Route based on user role
+    if (userRole === 'admin' || userRole === 'coach') {
+      navigate('/dashboard', { replace: true });
+    } else if (userRole === 'client') {
+      // Client routing based on status
+      if (clientData?.status === 'approved') {
+        navigate('/portal', { replace: true });
+      } else if (clientData?.status === 'pending') {
+        navigate('/access-pending', { replace: true });
+      } else if (clientData?.status === 'inactive' || clientData?.status === 'deleted') {
+        navigate('/access-revoked', { replace: true });
+      }
+    } else if (userRole === null && user) {
+      // User exists but no role found
+      navigate('/no-account', { replace: true });
+    }
+  }, [user, userRole, clientData, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +56,7 @@ export default function Login() {
     }
 
     toast.success('Welcome back!');
-    navigate('/dashboard');
+    // Navigation is handled by useEffect after auth state updates
   };
 
   return (
@@ -46,14 +68,14 @@ export default function Login() {
             <span className="text-2xl font-serif text-primary-foreground font-bold">FG</span>
           </div>
           <h1 className="text-3xl font-serif font-semibold text-foreground">Finding Good</h1>
-          <p className="text-muted-foreground mt-2">Coaching Management Dashboard</p>
+          <p className="text-muted-foreground mt-2">Welcome back</p>
         </div>
 
         {/* Login Card */}
         <Card className="shadow-soft border-border/50">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl font-serif">Welcome back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
+            <CardTitle className="text-xl font-serif">Sign In</CardTitle>
+            <CardDescription>Enter your credentials to continue</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
