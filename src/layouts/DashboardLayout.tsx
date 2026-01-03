@@ -10,18 +10,26 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function DashboardLayout() {
-  const { user, loading, userRole } = useAuth();
+  const { user, loading, roleLoading, userRole } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
+
+  console.log('[DashboardLayout] State:', { 
+    loading, 
+    roleLoading, 
+    userRole, 
+    hasUser: !!user 
+  });
 
   // Auto-close mobile menu on navigation
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  if (loading) {
+  // Wait for both auth and role loading
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -33,10 +41,19 @@ export default function DashboardLayout() {
   }
 
   if (!user) {
+    console.log('[DashboardLayout] No user, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
+  // If user is a client, redirect them to portal
+  if (userRole === 'client') {
+    console.log('[DashboardLayout] User is client, redirecting to /portal');
+    return <Navigate to="/portal" replace />;
+  }
+
+  // If no role found, show access denied
   if (!userRole) {
+    console.log('[DashboardLayout] No userRole, showing access denied');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center p-8">
