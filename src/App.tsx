@@ -17,11 +17,13 @@ import Analytics from "./pages/Analytics";
 import Chat from "./pages/Chat";
 import CoachChat from "./pages/CoachChat";
 import MyMap from "./pages/MyMap";
+import ClientPortalPreview from "./pages/ClientPortalPreview";
 import NotFound from "./pages/NotFound";
 
 // Portal pages
 import PortalHome from "./pages/portal/PortalHome";
 import PortalJourney from "./pages/portal/PortalJourney";
+import PortalMap from "./pages/portal/PortalMap";
 import PortalChat from "./pages/portal/PortalChat";
 import AccessPending from "./pages/portal/AccessPending";
 import AccessRevoked from "./pages/portal/AccessRevoked";
@@ -61,11 +63,13 @@ const App = () => (
             <Route element={<PortalLayout />}>
               <Route path="/portal" element={<PortalHome />} />
               <Route path="/portal/journey" element={<PortalJourney />} />
+              <Route path="/portal/map" element={<PortalMap />} />
               <Route path="/portal/chat" element={<PortalChat />} />
             </Route>
 
-            {/* Legacy Client Routes */}
+            {/* Coach Tools (accessible to coaches/admins only) */}
             <Route path="/my/map" element={<MyMap />} />
+            <Route path="/portal-preview" element={<ClientPortalPreview />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

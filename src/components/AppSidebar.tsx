@@ -10,6 +10,7 @@ import {
   LogOut,
   Map,
   Bot,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,12 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
       to: '/my/map', 
       icon: Map, 
       label: 'Client Map View',
+      show: isCoach 
+    },
+    { 
+      to: '/portal-preview', 
+      icon: Eye, 
+      label: 'Client Portal View',
       show: isCoach 
     },
   ].filter(item => item.show);

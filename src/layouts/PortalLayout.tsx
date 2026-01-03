@@ -1,7 +1,7 @@
 import { Outlet, NavLink, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Home, Map, MessageCircle, LogOut, Loader2 } from 'lucide-react';
+import { Home, Map, MessageCircle, LogOut, Loader2, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PortalLayout() {
@@ -61,6 +61,7 @@ export default function PortalLayout() {
   const navItems = [
     { to: '/portal', icon: Home, label: 'Home', end: true },
     { to: '/portal/journey', icon: Map, label: 'Journey' },
+    { to: '/portal/map', icon: Compass, label: 'My Map' },
     { to: '/portal/chat', icon: MessageCircle, label: 'Chat' },
   ];
 
