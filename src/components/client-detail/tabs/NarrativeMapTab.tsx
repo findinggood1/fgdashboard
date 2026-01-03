@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Sparkles, Loader2, ChevronDown, Flame, Pencil, X, Plus } from 'lucide-react';
-import { supabase, ZoneInterpretation, Superpower, WorldAskingInsight } from '@/lib/supabase';
+import { supabase, ZoneInterpretation, Superpower, WorldAskingInsight, WeeklyAction } from '@/lib/supabase';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Snapshot } from '@/hooks/useClientDetail';
@@ -39,6 +40,11 @@ interface InsightFormData {
   fires_element: string;
 }
 
+interface ActionFormData {
+  action: string;
+  fires_element: string;
+}
+
 interface NarrativeMapTabProps {
   engagement: {
     id: string;
@@ -52,6 +58,9 @@ interface NarrativeMapTabProps {
     superpowers_emerging?: Superpower[] | null;
     superpowers_hidden?: Superpower[] | null;
     world_asking?: WorldAskingInsight[] | null;
+    weekly_tracking?: string | null;
+    weekly_creating?: string | null;
+    weekly_actions?: WeeklyAction[] | null;
   } | null;
   clientName?: string;
   latestSnapshot?: Snapshot | null;
@@ -242,7 +251,7 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<SuperpowerCategory>('claimed');
-  const [deletingType, setDeletingType] = useState<'superpower' | 'insight'>('superpower');
+  const [deletingType, setDeletingType] = useState<'superpower' | 'insight' | 'action'>('superpower');
 
   // World Asking modal state
   const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
@@ -252,6 +261,18 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
     fires_element: 'strengths',
   });
   const [isSavingInsight, setIsSavingInsight] = useState(false);
+
+  // Weekly focus state
+  const [weeklyTracking, setWeeklyTracking] = useState(engagement?.weekly_tracking || '');
+  const [weeklyCreating, setWeeklyCreating] = useState(engagement?.weekly_creating || '');
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
+  const [actionForm, setActionForm] = useState<ActionFormData>({
+    action: '',
+    fires_element: 'strengths',
+  });
+  const [isSavingAction, setIsSavingAction] = useState(false);
+  const [deletingActionIndex, setDeletingActionIndex] = useState<number | null>(null);
 
   const hasActiveEngagement = engagement?.status === 'active';
 
@@ -276,7 +297,9 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
     setStoryPast(engagement?.story_past || '');
     setStoryPotential(engagement?.story_potential || '');
     setCustomNote(engagement?.zone_interpretation?.custom_note || '');
-  }, [engagement?.story_present, engagement?.story_past, engagement?.story_potential, engagement?.zone_interpretation?.custom_note]);
+    setWeeklyTracking(engagement?.weekly_tracking || '');
+    setWeeklyCreating(engagement?.weekly_creating || '');
+  }, [engagement?.story_present, engagement?.story_past, engagement?.story_potential, engagement?.zone_interpretation?.custom_note, engagement?.weekly_tracking, engagement?.weekly_creating]);
 
   // Determine current zone from snapshot or zone_interpretation
   const currentZone = (latestSnapshot?.overall_zone?.toLowerCase() || engagement?.zone_interpretation?.zone || 'exploring') as string;
@@ -632,8 +655,184 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
   const handleDelete = async () => {
     if (deletingType === 'insight') {
       await handleDeleteInsight();
+    } else if (deletingType === 'action') {
+      await handleDeleteAction();
     } else {
       await handleDeleteSuperpower();
+    }
+  };
+
+  // Weekly Focus handlers
+  const handleSaveWeeklyTracking = async () => {
+    if (!engagement?.id) return;
+    if (weeklyTracking === (engagement?.weekly_tracking || '')) return;
+
+    setSaving('weekly_tracking');
+    try {
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ weekly_tracking: weeklyTracking })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+      refetch();
+    } catch (error) {
+      console.error('Error saving weekly tracking:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save your changes. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleSaveWeeklyCreating = async () => {
+    if (!engagement?.id) return;
+    if (weeklyCreating === (engagement?.weekly_creating || '')) return;
+
+    setSaving('weekly_creating');
+    try {
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ weekly_creating: weeklyCreating })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+      refetch();
+    } catch (error) {
+      console.error('Error saving weekly creating:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save your changes. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleAddAction = () => {
+    setEditingActionIndex(null);
+    setActionForm({ action: '', fires_element: 'strengths' });
+    setIsActionModalOpen(true);
+  };
+
+  const handleEditAction = (item: WeeklyAction, index: number) => {
+    setEditingActionIndex(index);
+    setActionForm({
+      action: item.action,
+      fires_element: item.fires_element,
+    });
+    setIsActionModalOpen(true);
+  };
+
+  const handleDeleteActionClick = (index: number) => {
+    setDeletingActionIndex(index);
+    setDeletingType('action');
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleSaveAction = async () => {
+    if (!engagement?.id || !actionForm.action.trim()) return;
+
+    setIsSavingAction(true);
+    try {
+      const newAction: WeeklyAction = {
+        action: actionForm.action.trim(),
+        fires_element: actionForm.fires_element as WeeklyAction['fires_element'],
+        status: 'active',
+        assigned_date: new Date().toISOString().split('T')[0],
+        source: 'Coach',
+        created_at: new Date().toISOString(),
+      };
+
+      const currentArray = [...(engagement?.weekly_actions || [])];
+      
+      if (editingActionIndex !== null) {
+        // Preserve existing status when editing
+        newAction.status = currentArray[editingActionIndex]?.status || 'active';
+        currentArray[editingActionIndex] = newAction;
+      } else {
+        currentArray.push(newAction);
+      }
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ weekly_actions: currentArray })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Action saved!' });
+      setIsActionModalOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Error saving action:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save the action. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingAction(false);
+    }
+  };
+
+  const handleDeleteAction = async () => {
+    if (!engagement?.id || deletingActionIndex === null) return;
+
+    try {
+      const currentArray = [...(engagement?.weekly_actions || [])];
+      currentArray.splice(deletingActionIndex, 1);
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ weekly_actions: currentArray })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Action removed' });
+      setDeleteConfirmOpen(false);
+      setDeletingActionIndex(null);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting action:', error);
+      toast({
+        title: 'Failed to delete',
+        description: 'Could not remove the action. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleToggleActionStatus = async (index: number) => {
+    if (!engagement?.id) return;
+
+    try {
+      const currentArray = [...(engagement?.weekly_actions || [])];
+      const currentStatus = currentArray[index]?.status || 'active';
+      currentArray[index] = {
+        ...currentArray[index],
+        status: currentStatus === 'active' ? 'completed' : 'active',
+      };
+
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ weekly_actions: currentArray })
+        .eq('id', engagement.id);
+
+      if (error) throw error;
+      refetch();
+    } catch (error) {
+      console.error('Error toggling action status:', error);
+      toast({
+        title: 'Failed to update',
+        description: 'Could not update the action status. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -897,7 +1096,141 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         </CardContent>
       </Card>
 
-      {/* Generate Insights Section */}
+      {/* This Week's Focus Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Flame className="h-5 w-5 text-primary" />
+            This Week's Focus
+          </CardTitle>
+          <CardDescription>
+            Weekly intentions and actions for growth
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Two-column layout for tracking/creating */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* What I'm Tracking */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                What I'm Tracking
+              </Label>
+              <Textarea
+                value={weeklyTracking}
+                onChange={(e) => setWeeklyTracking(e.target.value)}
+                onBlur={handleSaveWeeklyTracking}
+                placeholder="What patterns or moments to notice..."
+                className="min-h-[100px] resize-none"
+              />
+              {saving === 'weekly_tracking' && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Saving...
+                </p>
+              )}
+            </div>
+
+            {/* What I'm Creating */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                What I'm Creating
+              </Label>
+              <Textarea
+                value={weeklyCreating}
+                onChange={(e) => setWeeklyCreating(e.target.value)}
+                onBlur={handleSaveWeeklyCreating}
+                placeholder="What evidence or outcomes to generate..."
+                className="min-h-[100px] resize-none"
+              />
+              {saving === 'weekly_creating' && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Saving...
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Weekly Actions Subsection */}
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Weekly Actions (Max 2)
+              </Label>
+            </div>
+            
+            {(engagement?.weekly_actions && Array.isArray(engagement.weekly_actions) && engagement.weekly_actions.length > 0) ? (
+              <div className="space-y-2">
+                {engagement.weekly_actions.map((item, idx) => {
+                  if (!item) return null;
+                  const firesElement = item?.fires_element || 'strengths';
+                  const firesStyle = firesColors[firesElement] || firesColors.strengths;
+                  const isCompleted = item?.status === 'completed';
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                        isCompleted ? 'bg-muted/50 border-muted' : 'bg-background'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={isCompleted}
+                        onCheckedChange={() => handleToggleActionStatus(idx)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-foreground ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                          {item?.action || 'No action text'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className={`${firesStyle.bg} ${firesStyle.text} capitalize text-xs`}>
+                            {firesElement}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleEditAction(item, idx)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteActionClick(idx)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic py-2">
+                No weekly actions yet. Add up to 2 focus actions.
+              </p>
+            )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={handleAddAction}
+              disabled={(engagement?.weekly_actions?.length || 0) >= 2}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Action
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1101,15 +1434,76 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         </DialogContent>
       </Dialog>
 
+      {/* Action Edit Modal */}
+      <Dialog open={isActionModalOpen} onOpenChange={setIsActionModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingActionIndex !== null ? 'Edit Action' : 'Add Action'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingActionIndex !== null 
+                ? 'Update this weekly action.' 
+                : 'Add a new weekly action (max 2).'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="action-text">Action</Label>
+              <Textarea
+                id="action-text"
+                value={actionForm.action}
+                onChange={(e) => setActionForm(prev => ({ ...prev, action: e.target.value }))}
+                placeholder="What specific action to take this week?"
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>FIRES Element</Label>
+              <Select
+                value={actionForm.fires_element}
+                onValueChange={(value) => setActionForm(prev => ({ ...prev, fires_element: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select element" />
+                </SelectTrigger>
+                <SelectContent>
+                  {firesElements.map(el => (
+                    <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsActionModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveAction} 
+              disabled={isSavingAction || !(actionForm.action?.trim())}
+            >
+              {isSavingAction ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove this {deletingType === 'insight' ? 'insight' : 'superpower'}?
+              Remove this {deletingType === 'insight' ? 'insight' : deletingType === 'action' ? 'action' : 'superpower'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The {deletingType === 'insight' ? 'insight' : 'superpower'} will be permanently removed from this client's profile.
+              This action cannot be undone. The {deletingType === 'insight' ? 'insight' : deletingType === 'action' ? 'action' : 'superpower'} will be permanently removed from this client's profile.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

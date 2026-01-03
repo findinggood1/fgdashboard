@@ -70,6 +70,15 @@ export interface WorldAskingInsight {
   created_at?: string;
 }
 
+export interface WeeklyAction {
+  action: string;
+  fires_element: 'feelings' | 'influence' | 'resilience' | 'ethics' | 'strengths';
+  status: 'active' | 'completed';
+  assigned_date?: string;
+  source?: 'AI' | 'Coach' | 'Client';
+  created_at?: string;
+}
+
 export interface CoachingEngagement {
   id: string;
   client_email: string;
@@ -89,6 +98,9 @@ export interface CoachingEngagement {
   superpowers_emerging: Superpower[] | null;
   superpowers_hidden: Superpower[] | null;
   world_asking: WorldAskingInsight[] | null;
+  weekly_tracking: string | null;
+  weekly_creating: string | null;
+  weekly_actions: WeeklyAction[] | null;
   ai_insights_generated_at: string | null;
   created_at: string;
 }
