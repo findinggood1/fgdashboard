@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, Client, Superpower, WorldAskingInsight, WeeklyAction, ZoneInterpretation } from '@/lib/supabase';
+import { MoreLessMarker } from '@/hooks/useClientDetail';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Compass, Pencil, Check, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Compass, Pencil, TrendingUp, TrendingDown, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 // Local interface for what we fetch from the DB
 interface ClientMapEngagement {
@@ -50,6 +53,10 @@ export default function MyMap() {
   const [editingInsightIndex, setEditingInsightIndex] = useState<number | null>(null);
   const [editingInsightText, setEditingInsightText] = useState<string>('');
   const [savingInsight, setSavingInsight] = useState(false);
+  
+  // More/Less markers state
+  const [markers, setMarkers] = useState<MoreLessMarker[]>([]);
+  const [togglingAction, setTogglingAction] = useState<number | null>(null);
 
   const isCoach = userRole === 'coach' || userRole === 'admin';
 
@@ -132,6 +139,57 @@ export default function MyMap() {
 
     fetchEngagement();
   }, [selectedClientEmail]);
+
+  // Fetch more_less_markers when client email is selected
+  useEffect(() => {
+    async function fetchMarkers() {
+      if (!selectedClientEmail) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('more_less_markers')
+          .select('*')
+          .eq('client_email', selectedClientEmail)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setMarkers(data || []);
+      } catch (err) {
+        console.error('Error fetching markers:', err);
+      }
+    }
+
+    fetchMarkers();
+  }, [selectedClientEmail]);
+
+  // Toggle weekly action status
+  const handleToggleAction = async (index: number) => {
+    if (!engagement) return;
+    
+    setTogglingAction(index);
+    try {
+      const updatedActions = [...(engagement.weekly_actions || [])];
+      const action = updatedActions[index];
+      const newStatus = action.status === 'completed' ? 'active' : 'completed';
+      updatedActions[index] = { ...action, status: newStatus };
+      
+      const { error } = await supabase
+        .from('coaching_engagements')
+        .update({ weekly_actions: updatedActions })
+        .eq('id', engagement.id);
+      
+      if (error) throw error;
+      
+      setEngagement({ ...engagement, weekly_actions: updatedActions });
+      toast.success(newStatus === 'completed' ? 'Action completed!' : 'Action reopened');
+    } catch (err) {
+      console.error('Error toggling action:', err);
+      toast.error('Failed to update action');
+    } finally {
+      setTogglingAction(null);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -630,6 +688,77 @@ export default function MyMap() {
               </DialogContent>
             </Dialog>
 
+            {/* More/Less Progress */}
+            {markers.length > 0 && (
+              <Card className="border-amber-200/50 bg-white/70 backdrop-blur shadow-xl">
+                <CardContent className="py-8">
+                  <h2 className="text-xl font-semibold text-amber-900 mb-6 flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                    More / Less Progress
+                  </h2>
+                  <div className="space-y-6">
+                    {markers.map((marker) => {
+                      const baseline = marker.baseline_score ?? 0;
+                      const target = marker.target_score ?? 10;
+                      const current = marker.current_score ?? baseline;
+                      const range = target - baseline;
+                      const progress = range !== 0 ? ((current - baseline) / range) * 100 : 0;
+                      const clampedProgress = Math.max(0, Math.min(100, progress));
+                      const hasProgress = current !== baseline;
+                      
+                      return (
+                        <div key={marker.id} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {marker.marker_type === 'more' ? (
+                                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                              ) : (
+                                <TrendingDown className="h-4 w-4 text-rose-500" />
+                              )}
+                              <span className="text-sm font-medium text-amber-900">
+                                {marker.marker_type.toUpperCase()}: {marker.marker_text}
+                              </span>
+                              {marker.fires_connection && (
+                                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                                  {marker.fires_connection}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Progress bar visualization */}
+                          <div className="relative">
+                            <div className="flex justify-between text-xs text-amber-600 mb-1">
+                              <span>{baseline}</span>
+                              <span className={`font-medium ${hasProgress ? 'text-emerald-600' : 'text-amber-500'}`}>
+                                {current}
+                              </span>
+                              <span>{target}</span>
+                            </div>
+                            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  hasProgress ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gray-300'
+                                }`}
+                                style={{ width: `${clampedProgress}%` }}
+                              />
+                            </div>
+                            {/* Current position indicator */}
+                            {hasProgress && (
+                              <div 
+                                className="absolute top-6 w-0.5 h-4 bg-emerald-600 rounded"
+                                style={{ left: `${clampedProgress}%`, transform: 'translateX(-50%)' }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* This Week's Focus */}
             {(engagement.weekly_tracking || engagement.weekly_creating || (engagement.weekly_actions && engagement.weekly_actions.length > 0)) && (
               <Card className="border-amber-200/50 bg-white/70 backdrop-blur shadow-xl">
@@ -665,24 +794,20 @@ export default function MyMap() {
                         {engagement.weekly_actions.map((action, index) => (
                           <div 
                             key={index} 
-                            className={`p-4 rounded-lg border ${
+                            className={`p-4 rounded-lg border cursor-pointer transition-colors ${
                               action.status === 'completed' 
-                                ? 'bg-green-50/50 border-green-200/50' 
-                                : 'bg-orange-50/50 border-orange-200/50'
+                                ? 'bg-green-50/50 border-green-200/50 hover:bg-green-50' 
+                                : 'bg-orange-50/50 border-orange-200/50 hover:bg-orange-50'
                             }`}
+                            onClick={() => handleToggleAction(index)}
                           >
                             <div className="flex items-start gap-3">
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                action.status === 'completed'
-                                  ? 'bg-green-500 border-green-500'
-                                  : 'border-orange-400'
-                              }`}>
-                                {action.status === 'completed' && (
-                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
+                              <Checkbox
+                                checked={action.status === 'completed'}
+                                disabled={togglingAction === index}
+                                onCheckedChange={() => handleToggleAction(index)}
+                                className="mt-0.5"
+                              />
                               <div className="flex-1">
                                 <p className={`text-amber-900 ${action.status === 'completed' ? 'line-through opacity-70' : ''}`}>
                                   {action.action}
@@ -693,12 +818,29 @@ export default function MyMap() {
                                   </Badge>
                                 )}
                               </div>
+                              {togglingAction === index && (
+                                <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Anchor Quote */}
+            {engagement.anchor_quote && (
+              <Card className="border-rose-200/50 bg-gradient-to-br from-rose-50 via-amber-50 to-orange-50 shadow-xl">
+                <CardContent className="py-10">
+                  <div className="text-center max-w-2xl mx-auto">
+                    <Quote className="h-8 w-8 text-rose-300 mx-auto mb-4" />
+                    <blockquote className="text-xl md:text-2xl font-serif italic text-amber-900 leading-relaxed">
+                      "{engagement.anchor_quote}"
+                    </blockquote>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -727,7 +869,24 @@ export default function MyMap() {
         )}
 
         {/* Footer */}
-        <p className="text-center text-amber-600/50 text-sm mt-8">
+        {engagement && (
+          <div className="text-center mt-12 space-y-3">
+            {engagement.ai_insights_generated_at && (
+              <p className="text-amber-600/60 text-sm">
+                Last updated: {format(new Date(engagement.ai_insights_generated_at), 'MMMM d, yyyy')}
+              </p>
+            )}
+            <Link 
+              to="/chat" 
+              className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 text-sm font-medium transition-colors"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Questions? Message your coach
+            </Link>
+          </div>
+        )}
+
+        <p className="text-center text-amber-600/40 text-xs mt-6 mb-8">
           Powered by FIRES Framework
         </p>
       </div>
