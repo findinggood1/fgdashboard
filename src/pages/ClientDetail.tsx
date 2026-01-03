@@ -12,6 +12,7 @@ import { GoalsChallengesSection } from '@/components/client-detail/GoalsChalleng
 import { FiresFocusSection } from '@/components/client-detail/FiresFocusSection';
 import { MoreLessSummary } from '@/components/client-detail/MoreLessSummary';
 import { RecentActivity } from '@/components/client-detail/RecentActivity';
+import { AssessmentsSection } from '@/components/client-detail/AssessmentsSection';
 import { SessionsTab } from '@/components/client-detail/tabs/SessionsTab';
 import { SnapshotsTab } from '@/components/client-detail/tabs/SnapshotsTab';
 import { ImpactTab } from '@/components/client-detail/tabs/ImpactTab';
@@ -19,12 +20,13 @@ import { FilesTab } from '@/components/client-detail/tabs/FilesTab';
 import { MoreLessTab } from '@/components/client-detail/tabs/MoreLessTab';
 import { NotesTab } from '@/components/client-detail/tabs/NotesTab';
 import { NarrativeMapTab } from '@/components/client-detail/tabs/NarrativeMapTab';
+import { AssignmentsTab } from '@/components/client-detail/tabs/AssignmentsTab';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ClientDetail() {
   const { email } = useParams<{ email: string }>();
   const { toast } = useToast();
-  const { client, engagement, snapshots, impactVerifications, sessions, markers, notes, memos, files, loading, updateEngagement, refetch } = useClientDetail(email);
+  const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
 
   const latestSnapshot = snapshots[0] || null;
@@ -96,6 +98,7 @@ export default function ClientDetail() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
           <TabsTrigger value="impact">Impact</TabsTrigger>
           <TabsTrigger value="files">Files</TabsTrigger>
@@ -108,6 +111,13 @@ export default function ClientDetail() {
           <StorySection engagement={engagement} onUpdate={updateEngagement} onStartEngagement={() => handleAction('Start Engagement')} />
           <GoalsChallengesSection engagement={engagement} />
           <FiresFocusSection engagement={engagement} latestSnapshot={latestSnapshot} />
+          <AssessmentsSection 
+            assessments={assessments} 
+            clientEmail={client?.email || ''} 
+            engagementId={engagement?.id} 
+            onRefresh={refetch}
+            onUploadFile={() => setActiveTab('files')}
+          />
           <MoreLessSummary markers={markers} onViewAll={() => setActiveTab('moreless')} />
           <RecentActivity activities={recentActivities} />
         </TabsContent>
@@ -115,6 +125,14 @@ export default function ClientDetail() {
         <TabsContent value="sessions">
           <SessionsTab 
             sessions={sessions} 
+            clientEmail={client?.email || ''} 
+            engagementId={engagement?.id}
+            onRefresh={refetch}
+          />
+        </TabsContent>
+        <TabsContent value="assignments">
+          <AssignmentsTab 
+            assignments={assignments} 
             clientEmail={client?.email || ''} 
             engagementId={engagement?.id}
             onRefresh={refetch}
