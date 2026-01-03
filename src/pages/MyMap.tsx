@@ -10,7 +10,6 @@ import { Loader2, MapPin, Heart, Sparkles, Target, Flame, AlertCircle, Quote, Co
 // Local interface for what we fetch from the DB
 interface ClientMapEngagement {
   id: string;
-  client_id: string;
   client_email: string;
   start_date: string;
   end_date: string | null;
@@ -90,12 +89,15 @@ export default function MyMap() {
         return;
       }
 
+      console.log('Fetching engagement for client:', selectedClientEmail);
       setLoading(true);
+      setError(null);
+      
       try {
         const { data, error } = await supabase
           .from('coaching_engagements')
           .select(`
-            id, client_id, client_email, start_date, end_date, status,
+            id, client_email, start_date, end_date, status,
             current_week, current_phase, zone_start, zone_current,
             zone_interpretations, superpowers, world_asking,
             weekly_tracking, weekly_creating, weekly_actions,
@@ -104,6 +106,8 @@ export default function MyMap() {
           .eq('client_email', selectedClientEmail)
           .eq('status', 'active')
           .maybeSingle();
+
+        console.log('Engagement query result:', { data, error });
 
         if (error) throw error;
         setEngagement(data);
