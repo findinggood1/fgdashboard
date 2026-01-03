@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalData } from '@/hooks/usePortalData';
+import { useHydrated } from '@/hooks/useHydrated';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,10 +62,14 @@ const ZONE_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 export default function PortalHome() {
   const { clientData } = useAuth();
   const { engagement, snapshots, impactEntries, sessions, moreLessEntries, isLoading } = usePortalData();
+  const hydrated = useHydrated();
 
   const firstName = clientData?.name?.split(' ')[0] || 'there';
   const latestSnapshot = snapshots[0];
-  const snapshotAge = latestSnapshot ? differenceInDays(new Date(), parseISO(latestSnapshot.created_at)) : null;
+  // Only compute date-dependent values after hydration to avoid mismatch
+  const snapshotAge = hydrated && latestSnapshot 
+    ? differenceInDays(new Date(), parseISO(latestSnapshot.created_at)) 
+    : null;
 
   // Calculate week progress
   const weekProgress = engagement ? Math.min((engagement.current_week / 12) * 100, 100) : 0;

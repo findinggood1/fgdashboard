@@ -5,9 +5,18 @@ import { Home, Map, MessageCircle, LogOut, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PortalLayout() {
-  const { user, loading, clientData, signOut } = useAuth();
+  const { user, loading, roleLoading, userRole, clientData, signOut } = useAuth();
 
-  if (loading) {
+  console.log('[PortalLayout] State:', { 
+    loading, 
+    roleLoading, 
+    userRole, 
+    hasUser: !!user,
+    clientStatus: clientData?.status 
+  });
+
+  // Wait for both auth loading and role loading to complete
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -16,19 +25,36 @@ export default function PortalLayout() {
   }
 
   if (!user) {
+    console.log('[PortalLayout] No user, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
-  // Check client status
-  if (!clientData) {
+  // If user is a coach or admin, redirect them to dashboard (not "no account")
+  if (userRole === 'admin' || userRole === 'coach') {
+    console.log('[PortalLayout] User is coach/admin, redirecting to /dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If userRole is null or not 'client', redirect to no-account
+  if (userRole !== 'client') {
+    console.log('[PortalLayout] userRole is not client:', userRole, ', redirecting to /no-account');
     return <Navigate to="/no-account" replace />;
   }
 
+  // User is a client but we don't have their data yet
+  if (!clientData) {
+    console.log('[PortalLayout] Client role but no clientData, redirecting to /no-account');
+    return <Navigate to="/no-account" replace />;
+  }
+
+  // Check client status
   if (clientData.status === 'pending') {
+    console.log('[PortalLayout] Client status is pending');
     return <Navigate to="/access-pending" replace />;
   }
 
   if (clientData.status === 'inactive' || clientData.status === 'deleted') {
+    console.log('[PortalLayout] Client status is inactive/deleted');
     return <Navigate to="/access-revoked" replace />;
   }
 
