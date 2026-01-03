@@ -73,7 +73,8 @@ export default function PortalLogin() {
     setIsLoading(true);
     
     try {
-      const redirectUrl = `${window.location.origin}/portal`;
+      const redirectUrl = `${window.location.origin}/portal/auth/callback`;
+      console.log('[PortalLogin] Sending magic link with redirectUrl:', redirectUrl);
       
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),

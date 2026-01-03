@@ -26,6 +26,7 @@ import PortalJourney from "./pages/portal/PortalJourney";
 import PortalMap from "./pages/portal/PortalMap";
 import PortalChat from "./pages/portal/PortalChat";
 import PortalLogin from "./pages/portal/PortalLogin";
+import PortalAuthCallback from "./pages/portal/PortalAuthCallback";
 import AccessPending from "./pages/portal/AccessPending";
 import AccessRevoked from "./pages/portal/AccessRevoked";
 import NoAccount from "./pages/portal/NoAccount";
@@ -45,6 +46,7 @@ const App = () => (
             
             {/* Status pages (no layout) */}
             <Route path="/portal/login" element={<PortalLogin />} />
+            <Route path="/portal/auth/callback" element={<PortalAuthCallback />} />
             <Route path="/access-pending" element={<AccessPending />} />
             <Route path="/access-revoked" element={<AccessRevoked />} />
             <Route path="/no-account" element={<NoAccount />} />
