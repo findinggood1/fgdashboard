@@ -20,12 +20,16 @@ export interface Coach {
   created_at: string;
 }
 
+export type ClientStatus = 'pending' | 'approved' | 'inactive' | 'deleted';
+
 export interface Client {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
+  phone: string | null;
+  notes: string | null;
   coach_id: string | null;
-  status: string;
+  status: ClientStatus;
   approved_at: string | null;
   approved_by: string | null;
   last_login_at: string | null;

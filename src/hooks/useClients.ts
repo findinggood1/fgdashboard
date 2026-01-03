@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Client } from '@/lib/supabase';
+import { supabase, Client, ClientStatus } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ClientWithDetails extends Client {
   last_activity: string | null;
@@ -16,16 +17,18 @@ export function useClients() {
   const [clients, setClients] = useState<ClientWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { coachData } = useAuth();
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch all clients
+      // Fetch all clients (excluding deleted)
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false });
 
       if (clientsError) throw clientsError;
@@ -153,17 +156,67 @@ export function useClients() {
     fetchClients();
   }, [fetchClients]);
 
-  const addClient = async (email: string, name?: string) => {
-    const { data, error } = await supabase
+  const addClient = async (data: {
+    email: string;
+    name: string;
+    phone?: string;
+    notes?: string;
+  }) => {
+    const { data: result, error } = await supabase
       .from('clients')
-      .insert([{ email, name: name || null, status: 'pending' }])
+      .insert([{
+        email: data.email,
+        name: data.name,
+        phone: data.phone || null,
+        notes: data.notes || null,
+        status: 'pending',
+        coach_id: coachData?.id || null,
+      }])
       .select()
       .single();
 
     if (error) throw error;
     await fetchClients();
-    return data;
+    return result;
   };
+
+  const updateClientStatus = async (clientId: string, status: ClientStatus) => {
+    const updateData: Record<string, unknown> = { status };
+    
+    // Set approved_at when approving
+    if (status === 'approved') {
+      updateData.approved_at = new Date().toISOString();
+      updateData.approved_by = coachData?.id || null;
+    }
+
+    const { error } = await supabase
+      .from('clients')
+      .update(updateData)
+      .eq('id', clientId);
+
+    if (error) throw error;
+    await fetchClients();
+  };
+
+  const bulkUpdateStatus = async (clientIds: string[], status: ClientStatus) => {
+    const updateData: Record<string, unknown> = { status };
+    
+    if (status === 'approved') {
+      updateData.approved_at = new Date().toISOString();
+      updateData.approved_by = coachData?.id || null;
+    }
+
+    const { error } = await supabase
+      .from('clients')
+      .update(updateData)
+      .in('id', clientIds);
+
+    if (error) throw error;
+    await fetchClients();
+  };
+
+  // Count pending clients
+  const pendingCount = clients.filter((c) => c.status === 'pending').length;
 
   return {
     clients,
@@ -171,5 +224,8 @@ export function useClients() {
     error,
     refetch: fetchClients,
     addClient,
+    updateClientStatus,
+    bulkUpdateStatus,
+    pendingCount,
   };
 }
