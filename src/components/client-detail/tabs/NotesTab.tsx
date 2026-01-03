@@ -32,7 +32,7 @@ const SESSION_TYPES = [
 export function NotesTab({ notes, memos, sessions, clientEmail, onRefresh }: NotesTabProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [coachNotesOpen, setCoachNotesOpen] = useState(false);
+  const [coachNotesOpen, setCoachNotesOpen] = useState(true);
 
   // Form state
   const [noteContent, setNoteContent] = useState('');
