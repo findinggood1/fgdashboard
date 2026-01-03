@@ -51,7 +51,18 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!coachData?.id) return;
+    console.log('=== DASHBOARD DEBUG START ===');
+    console.log('1. Auth Data:', {
+      coachId: coachData?.id,
+      coachEmail: coachData?.email,
+      coachName: coachData?.name,
+      fullCoachData: coachData
+    });
+
+    if (!coachData?.id) {
+      console.log('❌ No coach ID - exiting early');
+      return;
+    }
 
     setLoading(true);
 
@@ -64,39 +75,80 @@ export function useDashboard() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
 
       // Fetch clients for this coach
-      const { data: clients } = await supabase
+      console.log('2. Fetching clients with coach_id:', coachData.id);
+      const { data: clients, error: clientsError } = await supabase
         .from('clients')
         .select('email, name, status, coach_id')
         .eq('coach_id', coachData.id);
 
+      console.log('3. Clients Query Result:', {
+        query: `SELECT email, name, status, coach_id FROM clients WHERE coach_id = '${coachData.id}'`,
+        error: clientsError,
+        count: clients?.length || 0,
+        clients: clients
+      });
+
+      // Also fetch ALL clients to compare
+      const { data: allClients } = await supabase
+        .from('clients')
+        .select('email, name, status, coach_id');
+      console.log('3b. ALL Clients (no filter):', allClients);
+
       const clientEmails = clients?.map(c => c.email) || [];
       const clientMap = new Map(clients?.map(c => [c.email, c.name || c.email]) || []);
+      
+      console.log('4. Client Emails to filter by:', clientEmails);
 
       // Count active clients and engagements
-      const { data: engagements } = await supabase
+      console.log('5. Fetching engagements with coach_id:', coachData.id);
+      const { data: engagements, error: engError } = await supabase
         .from('coaching_engagements')
         .select('*')
         .eq('coach_id', coachData.id);
 
+      console.log('6. Engagements Query Result:', {
+        query: `SELECT * FROM coaching_engagements WHERE coach_id = '${coachData.id}'`,
+        error: engError,
+        count: engagements?.length || 0,
+        engagements: engagements
+      });
+
+      // Also fetch ALL engagements to compare
+      const { data: allEngagements } = await supabase
+        .from('coaching_engagements')
+        .select('*');
+      console.log('6b. ALL Engagements (no filter):', allEngagements);
+
       const activeEngagements = engagements?.filter(e => e.status === 'active') || [];
       const activeClientEmails = new Set(activeEngagements.map(e => e.client_email));
+      console.log('7. Active Engagements:', { count: activeEngagements.length, clientEmails: Array.from(activeClientEmails) });
 
       // Fetch sessions this week
-      const { data: weekSessions } = await supabase
+      console.log('8. Fetching sessions for client emails:', clientEmails);
+      const { data: weekSessions, error: sessError } = await supabase
         .from('session_transcripts')
         .select('id, client_email, session_date')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
         .gte('session_date', format(startOfWeek, 'yyyy-MM-dd'))
         .lte('session_date', format(endOfWeek, 'yyyy-MM-dd'));
 
+      console.log('9. Week Sessions Query Result:', {
+        query: `SELECT id, client_email, session_date FROM session_transcripts WHERE client_email IN (${clientEmails.join(', ')}) AND session_date >= '${format(startOfWeek, 'yyyy-MM-dd')}' AND session_date <= '${format(endOfWeek, 'yyyy-MM-dd')}'`,
+        error: sessError,
+        count: weekSessions?.length || 0,
+        sessions: weekSessions
+      });
+
       setStats({
         activeClients: activeClientEmails.size,
         activeEngagements: activeEngagements.length,
         sessionsThisWeek: weekSessions?.length || 0,
       });
+      console.log('10. Stats set to:', { activeClients: activeClientEmails.size, activeEngagements: activeEngagements.length, sessionsThisWeek: weekSessions?.length || 0 });
 
       // Fetch upcoming sessions (next 7 days)
-      const { data: upcoming } = await supabase
+      console.log('11. Fetching upcoming sessions...');
+      const { data: upcoming, error: upcomingError } = await supabase
         .from('session_transcripts')
         .select('id, client_email, session_date, session_number')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
@@ -104,6 +156,8 @@ export function useDashboard() {
         .lte('session_date', format(sevenDaysFromNow, 'yyyy-MM-dd'))
         .order('session_date', { ascending: true })
         .limit(10);
+
+      console.log('12. Upcoming Sessions Result:', { error: upcomingError, count: upcoming?.length || 0, upcoming });
 
       setUpcomingSessions(
         (upcoming || []).map(s => ({
@@ -119,12 +173,23 @@ export function useDashboard() {
       const activities: ActivityItem[] = [];
 
       // Snapshots
-      const { data: recentSnapshots } = await supabase
+      console.log('13. Fetching recent snapshots for emails:', clientEmails);
+      const { data: recentSnapshots, error: snapError } = await supabase
         .from('snapshots')
         .select('id, client_email, created_at')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
         .order('created_at', { ascending: false })
         .limit(10);
+
+      console.log('14. Recent Snapshots Result:', { error: snapError, count: recentSnapshots?.length || 0, snapshots: recentSnapshots });
+
+      // Fetch ALL snapshots to compare
+      const { data: allSnapshots } = await supabase
+        .from('snapshots')
+        .select('id, client_email, created_at')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      console.log('14b. ALL Snapshots (no filter):', allSnapshots);
 
       recentSnapshots?.forEach(s => {
         activities.push({
@@ -229,24 +294,34 @@ export function useDashboard() {
       }
 
       setAttentionClients(attention.slice(0, 5));
+      console.log('16. Attention Clients:', attention);
 
       // Analytics data
       const thisMonthStart = startOfMonth(today);
       const lastMonthStart = startOfMonth(subMonths(today, 1));
       const lastMonthEnd = subDays(thisMonthStart, 1);
 
-      const { data: thisMonthSnapshots } = await supabase
+      console.log('17. Fetching analytics...');
+      console.log('  - This month start:', format(thisMonthStart, 'yyyy-MM-dd'));
+      console.log('  - Last month range:', format(lastMonthStart, 'yyyy-MM-dd'), 'to', format(lastMonthEnd, 'yyyy-MM-dd'));
+
+      const { data: thisMonthSnapshots, error: thisMonthErr } = await supabase
         .from('snapshots')
         .select('id')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
         .gte('created_at', format(thisMonthStart, 'yyyy-MM-dd'));
 
-      const { data: lastMonthSnapshots } = await supabase
+      const { data: lastMonthSnapshots, error: lastMonthErr } = await supabase
         .from('snapshots')
         .select('id')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
         .gte('created_at', format(lastMonthStart, 'yyyy-MM-dd'))
         .lte('created_at', format(lastMonthEnd, 'yyyy-MM-dd'));
+
+      console.log('18. Analytics Snapshots:', {
+        thisMonth: { count: thisMonthSnapshots?.length || 0, error: thisMonthErr },
+        lastMonth: { count: lastMonthSnapshots?.length || 0, error: lastMonthErr }
+      });
 
       // Engagements by phase
       const phaseCount = { name: 0, validate: 0, communicate: 0 };
@@ -255,14 +330,17 @@ export function useDashboard() {
         else if (e.current_phase === 'validate') phaseCount.validate++;
         else if (e.current_phase === 'communicate') phaseCount.communicate++;
       });
+      console.log('19. Phase Distribution:', phaseCount);
 
       // Zone distribution from recent snapshots
-      const { data: zoneSnapshots } = await supabase
+      const { data: zoneSnapshots, error: zoneErr } = await supabase
         .from('snapshots')
         .select('overall_zone')
         .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
         .order('created_at', { ascending: false })
         .limit(50);
+
+      console.log('20. Zone Snapshots:', { count: zoneSnapshots?.length || 0, error: zoneErr, data: zoneSnapshots });
 
       const zoneCounts: Record<string, number> = {};
       zoneSnapshots?.forEach(s => {
@@ -271,7 +349,7 @@ export function useDashboard() {
         }
       });
 
-      setAnalytics({
+      const analyticsResult = {
         snapshotsThisMonth: thisMonthSnapshots?.length || 0,
         snapshotsLastMonth: lastMonthSnapshots?.length || 0,
         engagementsByPhase: {
@@ -280,7 +358,12 @@ export function useDashboard() {
           communicate: String(phaseCount.communicate),
         },
         zoneDistribution: Object.entries(zoneCounts).map(([zone, count]) => ({ zone, count })),
-      });
+      };
+      
+      console.log('21. Final Analytics:', analyticsResult);
+      console.log('=== DASHBOARD DEBUG END ===');
+      
+      setAnalytics(analyticsResult);
 
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
