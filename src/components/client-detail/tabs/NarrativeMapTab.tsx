@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,13 +10,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Sparkles, Loader2, ChevronDown, Flame, Pencil, X, Plus } from 'lucide-react';
+import { Loader2, ChevronDown, Flame, Pencil, X, Plus, Sparkles } from 'lucide-react';
 import { supabase, ZoneInterpretation, Superpower, WorldAskingInsight, WeeklyAction } from '@/lib/supabase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Snapshot } from '@/hooks/useClientDetail';
-
+import { WeeklyMapSection } from './WeeklyMapSection';
 interface ZoneDefault {
   id: string;
   zone_name: string;
@@ -45,10 +45,29 @@ interface ActionFormData {
   fires_element: string;
 }
 
+interface WeeklyMap {
+  id: string;
+  engagement_id: string;
+  client_email: string;
+  week_number: number;
+  phase: string | null;
+  client_map: any;
+  coach_map: any;
+  data_summary: any;
+  data_from: string | null;
+  data_to: string | null;
+  status: 'draft' | 'reviewed' | 'published';
+  created_at: string;
+  updated_at: string | null;
+  reviewed_at: string | null;
+  published_at: string | null;
+}
+
 interface NarrativeMapTabProps {
   engagement: {
     id: string;
     status: string;
+    current_week?: number;
     ai_insights_generated_at?: string | null;
     story_present?: string | null;
     story_past?: string | null;
@@ -275,6 +294,10 @@ export function NarrativeMapTab({ engagement, clientName, clientEmail, latestSna
   const [isSavingAction, setIsSavingAction] = useState(false);
   const [deletingActionIndex, setDeletingActionIndex] = useState<number | null>(null);
 
+  // Weekly maps state
+  const [weeklyMaps, setWeeklyMaps] = useState<WeeklyMap[]>([]);
+  const currentWeek = engagement?.current_week || 1;
+
   const hasActiveEngagement = engagement?.status === 'active';
 
   // Fetch zone defaults
@@ -292,6 +315,27 @@ export function NarrativeMapTab({ engagement, clientName, clientEmail, latestSna
     }
     fetchZoneDefaults();
   }, []);
+
+  // Fetch weekly maps
+  const fetchWeeklyMaps = useCallback(async () => {
+    if (!engagement?.id) return;
+    
+    const { data, error } = await supabase
+      .from('weekly_narrative_maps')
+      .select('*')
+      .eq('engagement_id', engagement.id)
+      .order('week_number', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching weekly maps:', error);
+      return;
+    }
+    setWeeklyMaps(data || []);
+  }, [engagement?.id]);
+
+  useEffect(() => {
+    fetchWeeklyMaps();
+  }, [fetchWeeklyMaps]);
 
   useEffect(() => {
     setStoryPresent(engagement?.story_present || '');
@@ -392,10 +436,12 @@ export function NarrativeMapTab({ engagement, clientName, clientEmail, latestSna
       console.log('Generated maps:', data);
 
       toast({
-        title: 'Narrative Map insights generated!',
-        description: 'The AI has analyzed client data and updated the map.',
+        title: 'Weekly map generated!',
+        description: `Week ${data.week_number || currentWeek} narrative map has been created.`,
       });
 
+      // Refresh weekly maps
+      fetchWeeklyMaps();
       refetch();
     } catch (error) {
       console.error('Error generating insights:', error);
@@ -855,6 +901,17 @@ export function NarrativeMapTab({ engagement, clientName, clientEmail, latestSna
 
   return (
     <div className="mt-6 space-y-6">
+      {/* Weekly Narrative Maps - at top */}
+      <WeeklyMapSection
+        engagementId={engagement.id}
+        clientEmail={clientEmail}
+        currentWeek={currentWeek}
+        weeklyMaps={weeklyMaps}
+        isGenerating={isGenerating}
+        onGenerate={handleGenerateInsights}
+        onRefetch={fetchWeeklyMaps}
+      />
+
       {/* The Story We're Strengthening */}
       <Card className="bg-primary/5 border-primary/20">
         <CardHeader>
@@ -1234,43 +1291,6 @@ export function NarrativeMapTab({ engagement, clientName, clientEmail, latestSna
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            AI Insights
-          </CardTitle>
-          <CardDescription>
-            Generate AI-powered analysis of client data
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center gap-2">
-            <Button 
-              onClick={handleGenerateInsights} 
-              disabled={isGenerating}
-              className="gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Generate Insights
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              {engagement?.ai_insights_generated_at
-                ? `Last generated: ${format(new Date(engagement.ai_insights_generated_at), 'MMM d, yyyy h:mm a')}`
-                : 'No AI insights generated yet'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Superpower Edit Modal */}
       <Dialog open={isSuperpowerModalOpen} onOpenChange={setIsSuperpowerModalOpen}>
