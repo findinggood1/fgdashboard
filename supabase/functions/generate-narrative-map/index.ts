@@ -13,47 +13,59 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SYSTEM_PROMPT = `You are a Narrative Integrity analyst for Finding Good coaching. Your job is to synthesize client data into meaningful insights that help them see their own story more clearly.
+const WEEKLY_MAP_SYSTEM_PROMPT = `You are generating a Weekly Narrative Map for a coaching client in the Finding Good system.
 
-THE FRAMEWORK:
-Narrative Integrity = the ability to clarify, act on, and communicate the most honest version of your story, and help others do the same.
+CONTEXT:
+- This client is in a 12-week Narrative Integrity coaching engagement
+- The three phases are: NAME (weeks 1-4), VALIDATE (weeks 5-8), ALIGN (weeks 9-12)
+- NAME = building clarity about their story
+- VALIDATE = gathering evidence that acting on it works  
+- ALIGN = holding it under pressure and helping others
+- FIRES framework: Feelings, Influence, Resilience, Ethics, Strengths
+- The Four Zones: Exploring, Discovering, Performing, Owning
 
-THE FIRES FRAMEWORK:
-- Feelings: Emotional awareness and regulation
-- Influence: Locus of control and agency  
-- Resilience: Growth through difficulty
-- Ethics: Values alignment and purpose
-- Strengths: Capability confidence and self-efficacy
+YOUR TASK:
+Generate TWO separate outputs from the client data provided:
 
-THE FOUR ZONES (from FIRES Snapshot):
-- Exploring (Low confidence, Low alignment): Stay curious, refine direction
-- Discovering (Low confidence, High alignment): Bring forward past wins
-- Performing (High confidence, Low alignment): Reconnect to identity
-- Owning (High confidence, High alignment): Extend influence to others
+1. CLIENT_MAP (shown to the client in their portal - warm, celebratory, grounded in their words):
+- story_summary: 2-3 sentences about what's emerging in their story this week. Reference specific things they said or did.
+- zone_insight: 1-2 sentences about what their current zone means for them right now.
+- wins_this_week: Array of 2-4 specific wins from the data. Quote their actual words when possible. Be concrete.
+- focus_next_week: 1 sentence about where to put attention. Make it actionable but not prescriptive.
+- reflection_prompt: 1 powerful question for them to sit with. Should provoke useful thinking.
 
-SUPERPOWERS FRAMEWORK:
-1. 🔥 SUPERPOWERS CLAIMED - What they know and own
-   - Evidence: High confidence AND high alignment in FIRES elements
-   - Patterns they've demonstrated repeatedly
-   - Strengths they articulate themselves
+2. COACH_MAP (only the coach sees this - direct, analytical, useful for session prep):
+- patterns_noticed: Array of 2-4 patterns across the data the coach should notice. Connect dots they might miss.
+- potential_blindspots: Array of 1-3 things the client may not be seeing about themselves or their situation.
+- conversation_starters: Array of 2-3 curiosity-based questions for the next session. No SOFA (Suggestions, Opinions, Feedback, Advice).
+- markers_to_watch: Array of specific More/Less markers showing movement or stuck. Note direction of change.
+- phase_alignment: 1-2 sentences about how they're progressing in their current phase (NAME/VALIDATE/ALIGN).
 
-2. 🌱 SUPERPOWERS EMERGING - What they're building confidence in
-   - Evidence: High alignment but lower confidence (Discovering zone elements)
-   - New behaviors they're trying
-   - Skills they're developing but haven't fully claimed
+IMPORTANT GUIDELINES:
+- Ground everything in the actual data provided - don't make things up
+- For client_map: Use "you" language, celebrate what's working, be warm
+- For coach_map: Be direct and analytical, surface what's useful for coaching
+- If data is sparse, acknowledge that rather than fabricating insights
+- Quote the client's own words whenever possible (they're more powerful than your paraphrases)
 
-3. ✨ SUPERPOWERS HIDDEN - What's in the data but they haven't claimed yet
-   - Evidence: Impact they're having that they don't see
-   - Patterns across sessions they haven't connected
-   - Strengths others would name that they dismiss
-
-WRITING GUIDELINES:
-- Use second person ("You've shown..." not "The client has shown...")
-- Be specific - reference actual quotes, events, examples from their data
-- Be warm but direct - no fluff
-- First-person voice for story sections ("I'm ready to..." not "They are ready to...")
-- Evidence should be concrete examples, not abstract observations
-- Connect insights to the 3Ps story arc when possible`
+OUTPUT FORMAT:
+Return ONLY valid JSON with this exact structure (no markdown, no explanation):
+{
+  "client_map": {
+    "story_summary": "string",
+    "zone_insight": "string",
+    "wins_this_week": ["string", "string"],
+    "focus_next_week": "string",
+    "reflection_prompt": "string"
+  },
+  "coach_map": {
+    "patterns_noticed": ["string", "string"],
+    "potential_blindspots": ["string"],
+    "conversation_starters": ["string", "string"],
+    "markers_to_watch": ["string"],
+    "phase_alignment": "string"
+  }
+}`
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -154,7 +166,7 @@ serve(async (req) => {
     // Build comprehensive context
     const context = buildAnalysisContext(client, engagement, markers, snapshots, impacts, sessions, notes, markerUpdates, voiceMemos, clientFiles)
 
-    // Call Claude for analysis
+    // Call Claude for analysis with new weekly map prompt
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -165,68 +177,17 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
+        system: WEEKLY_MAP_SYSTEM_PROMPT,
         messages: [{
           role: 'user',
-          content: `Analyze this client's data and generate their Narrative Integrity Map content.
+          content: `Generate a Weekly Narrative Map for this client based on the following data from ${fromDate.split('T')[0]} to ${toDate.split('T')[0]}.
 
+CLIENT DATA:
 ${context}
 
 ---
 
-Generate a complete Narrative Integrity Map. Respond in this exact JSON format:
-
-{
-  "superpowers_claimed": [
-    {
-      "superpower": "Name of superpower (usually a FIRES element or related quality)",
-      "description": "One sentence about what this means for them",
-      "evidence": ["Specific example 1 from their data", "Specific example 2"],
-      "fires_element": "feelings|influence|resilience|ethics|strengths"
-    }
-  ],
-  "superpowers_emerging": [
-    {
-      "superpower": "Name",
-      "description": "What they're building",
-      "evidence": ["Specific examples of this emerging"],
-      "fires_element": "feelings|influence|resilience|ethics|strengths"
-    }
-  ],
-  "superpowers_hidden": [
-    {
-      "superpower": "Name",
-      "description": "What's in their data that they haven't claimed",
-      "evidence": ["Examples they might not see themselves"],
-      "fires_element": "feelings|influence|resilience|ethics|strengths"
-    }
-  ],
-  "zone_interpretation": {
-    "zone": "exploring|discovering|performing|owning",
-    "custom_note": "What this zone means specifically for THIS person right now (2-3 sentences)"
-  },
-  "world_asking": [
-    {
-      "insight": "Full insight paragraph - what the world/their story is asking of them",
-      "fires_element": "feelings|influence|resilience|ethics|strengths"
-    }
-  ],
-  "suggested_weekly_actions": [
-    {
-      "action": "Specific action they could take this week (one sentence)",
-      "fires_element": "feelings|influence|resilience|ethics|strengths"
-    }
-  ],
-  "suggested_anchor_quote": "An inspiring one-liner that captures their journey"
-}
-
-IMPORTANT:
-- Generate 2-3 items for each superpowers category
-- Generate 3-4 "world asking" insights
-- Generate exactly 2 weekly actions
-- All evidence must be specific examples from their actual data
-- Write in second person for descriptions, first person for quotes
-- Be warm but direct - no generic coaching speak`
+Generate the client_map and coach_map as specified. Return ONLY valid JSON.`
         }]
       })
     })
@@ -234,90 +195,48 @@ IMPORTANT:
     const aiData = await response.json()
     
     if (aiData.error) {
+      console.error('Claude API error:', aiData.error)
       throw new Error(aiData.error.message)
     }
 
     // Parse the AI response
-    let insights
+    let parsedMaps
     try {
-      const content = aiData.content[0].text
-      // Handle potential markdown code blocks
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/)
-      insights = JSON.parse(jsonMatch ? jsonMatch[1] : content)
+      // Handle potential markdown code blocks in response
+      let content = aiData.content[0].text
+      if (content.startsWith('```')) {
+        content = content.replace(/```json?\n?/g, '').replace(/```$/g, '')
+      }
+      parsedMaps = JSON.parse(content.trim())
     } catch (e) {
       console.error('Failed to parse AI response:', aiData.content[0].text)
-      throw new Error('Failed to parse AI response as JSON')
+      throw new Error('AI returned invalid JSON')
     }
 
-    // Get zone defaults for the current zone
-    const currentZone = snapshots[0]?.overall_zone?.toLowerCase() || engagement.current_zone || 'exploring'
-    const zoneDefault = zoneDefaults.find((z: { zone_name: string }) => z.zone_name === currentZone) || {}
-
-    // Merge zone interpretation with defaults
-    const zoneInterpretation = {
-      zone: currentZone,
-      headline: zoneDefault.headline || '',
-      description: zoneDefault.description || '',
-      the_work: zoneDefault.the_work || '',
-      custom_note: insights.zone_interpretation?.custom_note || '',
-      source: 'ai',
-      updated_at: new Date().toISOString()
-    }
-
-    // Add metadata to superpowers
-    const addMetadata = (items: any[]) => items.map(item => ({
-      ...item,
-      source: 'ai',
-      created_at: new Date().toISOString()
-    }))
-
-    // Prepare update payload
-    const updatePayload = {
-      superpowers_claimed: addMetadata(insights.superpowers_claimed || []),
-      superpowers_emerging: addMetadata(insights.superpowers_emerging || []),
-      superpowers_hidden: addMetadata(insights.superpowers_hidden || []),
-      zone_interpretation: zoneInterpretation,
-      world_asking: addMetadata(insights.world_asking || []),
-      weekly_actions: (insights.suggested_weekly_actions || []).map((a: any) => ({
-        ...a,
-        assigned_date: new Date().toISOString().split('T')[0],
-        status: 'active'
-      })),
-      anchor_quote: insights.suggested_anchor_quote || null,
-      ai_insights_generated_at: new Date().toISOString(),
-      ai_insights_version: (engagement.ai_insights_version || 0) + 1,
-      updated_at: new Date().toISOString()
-    }
-
-    // Update the engagement
-    const { error: updateError } = await supabase
-      .from('coaching_engagements')
-      .update(updatePayload)
-      .eq('id', engagement.id)
-
-    if (updateError) {
-      throw new Error(`Failed to update engagement: ${updateError.message}`)
-    }
-
-    // Log to history
-    await supabase.from('narrative_map_history').insert({
-      engagement_id: engagement.id,
-      field_name: 'ai_generation',
-      old_value: null,
-      new_value: updatePayload,
-      changed_by: 'ai'
+    console.log('Generated maps successfully:', {
+      has_client_map: !!parsedMaps.client_map,
+      has_coach_map: !!parsedMaps.coach_map
     })
 
+    // Return both maps in the response (don't save to coaching_engagements yet)
     return new Response(
       JSON.stringify({
         success: true,
-        engagement_id: engagement.id,
-        insights: updatePayload,
+        client_map: parsedMaps.client_map,
+        coach_map: parsedMaps.coach_map,
         date_range: {
           from: fromDate,
           to: toDate
         },
-        message: 'Narrative Integrity Map generated successfully'
+        data_summary: {
+          snapshots_count: snapshots?.length || 0,
+          impacts_count: impacts?.length || 0,
+          sessions_count: sessions?.length || 0,
+          notes_count: notes?.length || 0,
+          memos_count: voiceMemos?.length || 0,
+          files_count: clientFiles?.length || 0,
+          marker_updates_count: markerUpdates?.length || 0
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
