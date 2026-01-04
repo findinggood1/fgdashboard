@@ -41,6 +41,12 @@ export interface AnalyticsData {
   zoneDistribution: { zone: string; count: number }[];
 }
 
+export interface PortalLoginStats {
+  clientsLoggedIn: number;
+  totalClients: number;
+  lastLogin: { name: string; timestamp: string } | null;
+}
+
 export function useDashboard() {
   const { coachData } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({ activeClients: 0, activeEngagements: 0, sessionsThisWeek: 0 });
@@ -48,6 +54,7 @@ export function useDashboard() {
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [attentionClients, setAttentionClients] = useState<AttentionClient[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [portalLoginStats, setPortalLoginStats] = useState<PortalLoginStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
@@ -78,11 +85,11 @@ export function useDashboard() {
       console.log('2. Fetching clients with coach_id:', coachData.id);
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
-        .select('email, name, status, coach_id')
+        .select('email, name, status, coach_id, last_login_at')
         .eq('coach_id', coachData.id);
 
       console.log('3. Clients Query Result:', {
-        query: `SELECT email, name, status, coach_id FROM clients WHERE coach_id = '${coachData.id}'`,
+        query: `SELECT email, name, status, coach_id, last_login_at FROM clients WHERE coach_id = '${coachData.id}'`,
         error: clientsError,
         count: clients?.length || 0,
         clients: clients
@@ -384,9 +391,28 @@ export function useDashboard() {
       };
       
       console.log('21. FINAL ANALYTICS RESULT:', analyticsResult);
-      console.log('=== DASHBOARD DEBUG END ===');
       
       setAnalytics(analyticsResult);
+
+      // Calculate portal login stats
+      const approvedClients = clients?.filter(c => c.status === 'approved') || [];
+      const clientsWithLogins = approvedClients.filter(c => c.last_login_at);
+      const sortedByLogin = [...clientsWithLogins].sort(
+        (a, b) => new Date(b.last_login_at!).getTime() - new Date(a.last_login_at!).getTime()
+      );
+      
+      const loginStats: PortalLoginStats = {
+        clientsLoggedIn: clientsWithLogins.length,
+        totalClients: approvedClients.length,
+        lastLogin: sortedByLogin[0] 
+          ? { name: sortedByLogin[0].name || sortedByLogin[0].email, timestamp: sortedByLogin[0].last_login_at! }
+          : null,
+      };
+      
+      console.log('22. Portal Login Stats:', loginStats);
+      setPortalLoginStats(loginStats);
+      
+      console.log('=== DASHBOARD DEBUG END ===');
 
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -405,6 +431,7 @@ export function useDashboard() {
     activityFeed,
     attentionClients,
     analytics,
+    portalLoginStats,
     loading,
     refetch: fetchDashboardData,
   };
