@@ -225,8 +225,8 @@ export default function ClientDetail() {
 
         <TabsContent value="overview" className="space-y-6 mt-6">
           <StorySection engagement={engagement} onUpdate={updateEngagement} onStartEngagement={() => setEngagementWizardOpen(true)} />
-          <GoalsChallengesSection engagement={engagement} />
-          <FiresFocusSection engagement={engagement} latestSnapshot={latestSnapshot} />
+          <GoalsChallengesSection engagement={engagement} onUpdate={updateEngagement} />
+          <FiresFocusSection engagement={engagement} latestSnapshot={latestSnapshot} onUpdate={updateEngagement} />
           <AssessmentsSection 
             assessments={assessments} 
             clientEmail={client?.email || ''} 
