@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { AddClientModal } from '@/components/clients/AddClientModal';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
+import { Smartphone } from 'lucide-react';
 import { 
   Users, 
   Calendar, 
@@ -49,7 +50,7 @@ const ZONE_COLORS: Record<string, string> = {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { userRole, coachData } = useAuth();
-  const { stats, upcomingSessions, activityFeed, attentionClients, analytics, loading } = useDashboard();
+  const { stats, upcomingSessions, activityFeed, attentionClients, analytics, portalLoginStats, loading } = useDashboard();
   const { addClient } = useClients();
   const [showAddClient, setShowAddClient] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -116,7 +117,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-soft">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -150,6 +151,29 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.sessionsThisWeek}</div>
+          </CardContent>
+        </Card>
+
+        {/* Portal Login Stats */}
+        <Card className="shadow-soft">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Portal Logins
+            </CardTitle>
+            <Smartphone className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {portalLoginStats?.clientsLoggedIn || 0}
+              <span className="text-sm font-normal text-muted-foreground">
+                /{portalLoginStats?.totalClients || 0}
+              </span>
+            </div>
+            {portalLoginStats?.lastLogin && (
+              <p className="text-xs text-muted-foreground mt-1 truncate">
+                Last: {portalLoginStats.lastLogin.name.split(' ')[0]} • {formatDistanceToNow(new Date(portalLoginStats.lastLogin.timestamp), { addSuffix: true })}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

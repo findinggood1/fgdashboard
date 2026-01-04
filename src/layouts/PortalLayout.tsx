@@ -68,23 +68,23 @@ export default function PortalLayout() {
   const firstName = clientData?.name?.split(' ')[0] || 'Client';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-16 sm:pb-0">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-sm font-serif text-primary-foreground font-bold">FG</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg gradient-primary flex items-center justify-center">
+                <span className="text-xs sm:text-sm font-serif text-primary-foreground font-bold">FG</span>
               </div>
-              <span className="font-serif text-lg font-medium text-foreground hidden sm:block">
+              <span className="font-serif text-base sm:text-lg font-medium text-foreground hidden sm:block">
                 Finding Good
               </span>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex items-center gap-1">
+            {/* Desktop Navigation */}
+            <nav className="hidden sm:flex items-center gap-1">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -100,13 +100,13 @@ export default function PortalLayout() {
                   }
                 >
                   <item.icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </NavLink>
               ))}
             </nav>
 
             {/* User Menu */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <span className="text-sm text-muted-foreground hidden sm:block">
                 {firstName}
               </span>
@@ -114,7 +114,7 @@ export default function PortalLayout() {
                 variant="ghost"
                 size="icon"
                 onClick={signOut}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground h-9 w-9"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -125,13 +125,43 @@ export default function PortalLayout() {
 
       {/* Main Content */}
       <main className="flex-1">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <Outlet />
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-6">
+      {/* Mobile Bottom Navigation */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-area-bottom">
+        <div className="flex items-center justify-around h-16">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                cn(
+                  'flex flex-col items-center justify-center gap-1 px-4 py-2 min-w-[64px] rounded-lg transition-colors',
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} />
+                  <span className={cn('text-xs font-medium', isActive && 'text-primary')}>
+                    {item.label}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+
+      {/* Footer - Hidden on mobile */}
+      <footer className="hidden sm:block border-t border-border py-6">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
           <p className="text-sm text-muted-foreground">
             Powered by{' '}

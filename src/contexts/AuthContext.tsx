@@ -100,6 +100,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Found client, status:', client.status);
         setClientData(client);
         setUserRole('client');
+        
+        // Update last_login_at for approved clients
+        if (client.status === 'approved') {
+          console.log('[Auth] Updating last_login_at for client');
+          supabase
+            .from('clients')
+            .update({ last_login_at: new Date().toISOString() })
+            .eq('email', normalizedEmail)
+            .then(({ error }) => {
+              if (error) console.error('[Auth] Failed to update last_login_at:', error);
+            });
+        }
+        
         setRoleLoading(false);
         return;
       }
