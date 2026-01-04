@@ -218,25 +218,81 @@ Generate the client_map and coach_map as specified. Return ONLY valid JSON.`
       has_coach_map: !!parsedMaps.coach_map
     })
 
-    // Return both maps in the response (don't save to coaching_engagements yet)
+    // Get the current week number from the engagement
+    const weekNumber = engagement.current_week || 1
+
+    // Check if a map already exists for this week
+    const { data: existingMap } = await supabase
+      .from('weekly_narrative_maps')
+      .select('id')
+      .eq('engagement_id', engagement.id)
+      .eq('week_number', weekNumber)
+      .maybeSingle()
+
+    // Prepare the data summary
+    const dataSummary = {
+      snapshots_count: snapshots?.length || 0,
+      impacts_count: impacts?.length || 0,
+      sessions_count: sessions?.length || 0,
+      notes_count: notes?.length || 0,
+      memos_count: voiceMemos?.length || 0,
+      files_count: clientFiles?.length || 0,
+      marker_updates_count: markerUpdates?.length || 0
+    }
+
+    // Save to weekly_narrative_maps table
+    if (existingMap) {
+      console.log(`Updating existing map for week ${weekNumber}:`, existingMap.id)
+      const { error: updateError } = await supabase
+        .from('weekly_narrative_maps')
+        .update({
+          client_map: parsedMaps.client_map,
+          coach_map: parsedMaps.coach_map,
+          data_summary: dataSummary,
+          data_from: fromDate,
+          data_to: toDate,
+          status: 'draft',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingMap.id)
+      
+      if (updateError) {
+        console.error('Error updating weekly map:', updateError)
+      }
+    } else {
+      console.log(`Inserting new map for week ${weekNumber}`)
+      const { error: insertError } = await supabase
+        .from('weekly_narrative_maps')
+        .insert({
+          engagement_id: engagement.id,
+          client_email: clientEmail,
+          week_number: weekNumber,
+          phase: engagement.current_phase || 'name',
+          client_map: parsedMaps.client_map,
+          coach_map: parsedMaps.coach_map,
+          data_summary: dataSummary,
+          data_from: fromDate,
+          data_to: toDate,
+          status: 'draft'
+        })
+      
+      if (insertError) {
+        console.error('Error inserting weekly map:', insertError)
+      }
+    }
+
+    // Return both maps in the response
     return new Response(
       JSON.stringify({
         success: true,
         client_map: parsedMaps.client_map,
         coach_map: parsedMaps.coach_map,
+        week_number: weekNumber,
         date_range: {
           from: fromDate,
           to: toDate
         },
-        data_summary: {
-          snapshots_count: snapshots?.length || 0,
-          impacts_count: impacts?.length || 0,
-          sessions_count: sessions?.length || 0,
-          notes_count: notes?.length || 0,
-          memos_count: voiceMemos?.length || 0,
-          files_count: clientFiles?.length || 0,
-          marker_updates_count: markerUpdates?.length || 0
-        }
+        data_summary: dataSummary
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
