@@ -294,7 +294,7 @@ export default function ClientDetail() {
         </TabsContent>
         
         <TabsContent value="narrative-map">
-          <NarrativeMapTab engagement={engagement} clientName={client?.name} latestSnapshot={latestSnapshot} refetch={refetch} />
+          <NarrativeMapTab engagement={engagement} clientName={client?.name} clientEmail={client?.email || ''} latestSnapshot={latestSnapshot} refetch={refetch} />
         </TabsContent>
       </Tabs>
     </div>

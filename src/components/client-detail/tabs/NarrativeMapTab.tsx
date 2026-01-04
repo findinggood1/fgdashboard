@@ -63,6 +63,7 @@ interface NarrativeMapTabProps {
     weekly_actions?: WeeklyAction[] | null;
   } | null;
   clientName?: string;
+  clientEmail: string;
   latestSnapshot?: Snapshot | null;
   refetch: () => void;
 }
@@ -224,7 +225,7 @@ const zoneColors: Record<string, { bg: string; text: string; border: string }> =
   owning: { bg: 'bg-green-500/10', text: 'text-green-600', border: 'border-green-500/30' },
 };
 
-export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetch }: NarrativeMapTabProps) {
+export function NarrativeMapTab({ engagement, clientName, clientEmail, latestSnapshot, refetch }: NarrativeMapTabProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [storyPresent, setStoryPresent] = useState(engagement?.story_present || '');
   const [storyPast, setStoryPast] = useState(engagement?.story_past || '');
@@ -370,12 +371,12 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
   };
 
   const handleGenerateInsights = async () => {
-    if (!engagement?.id) return;
+    if (!engagement?.id || !clientEmail) return;
 
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-narrative-map', {
-        body: { engagementId: engagement.id }
+        body: { clientEmail }
       });
 
       if (error) {
@@ -387,6 +388,8 @@ export function NarrativeMapTab({ engagement, clientName, latestSnapshot, refetc
         console.error('API error:', data.error);
         throw new Error(data.error);
       }
+
+      console.log('Generated maps:', data);
 
       toast({
         title: 'Narrative Map insights generated!',
