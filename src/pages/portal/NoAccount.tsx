@@ -1,10 +1,45 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { UserX, LogOut } from 'lucide-react';
+import { UserX, LogOut, Loader2 } from 'lucide-react';
 
 export default function NoAccount() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, userRole, clientData, loading, roleLoading } = useAuth();
+  const navigate = useNavigate();
+
+  // Self-healing: redirect if role becomes known after landing here
+  useEffect(() => {
+    if (loading || roleLoading) return;
+
+    if (userRole === 'admin' || userRole === 'coach') {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    if (userRole === 'client' && clientData) {
+      if (clientData.status === 'approved') {
+        navigate('/portal', { replace: true });
+      } else if (clientData.status === 'pending') {
+        navigate('/access-pending', { replace: true });
+      } else {
+        navigate('/access-revoked', { replace: true });
+      }
+    }
+  }, [loading, roleLoading, userRole, clientData, navigate]);
+
+  // Show loading while role is being determined
+  if (loading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Checking your account...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
