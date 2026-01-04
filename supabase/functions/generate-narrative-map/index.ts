@@ -88,7 +88,9 @@ serve(async (req) => {
       impactsRes,
       sessionsRes,
       notesRes,
-      zoneDefaultsRes
+      zoneDefaultsRes,
+      voiceMemosRes,
+      clientFilesRes
     ] = await Promise.all([
       supabase.from('clients').select('*').eq('email', clientEmail).single(),
       engagementId 
@@ -99,7 +101,10 @@ serve(async (req) => {
       supabase.from('impact_verifications').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(20),
       supabase.from('session_transcripts').select('*').eq('client_email', clientEmail).order('session_date', { ascending: false }).limit(5),
       supabase.from('coaching_notes').select('*').eq('client_email', clientEmail).order('note_date', { ascending: false }).limit(10),
-      supabase.from('zone_defaults').select('*')
+      supabase.from('zone_defaults').select('*'),
+      // New data sources
+      supabase.from('voice_memos').select('id, title, transcription, created_at').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10),
+      supabase.from('client_files').select('id, file_name, file_type, description, created_at').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10)
     ])
 
     const client = clientRes.data
@@ -110,6 +115,21 @@ serve(async (req) => {
     const sessions = sessionsRes.data || []
     const notes = notesRes.data || []
     const zoneDefaults = zoneDefaultsRes.data || []
+    const voiceMemos = voiceMemosRes.data || []
+    const clientFiles = clientFilesRes.data || []
+
+    // Fetch marker updates for this client's markers (requires marker IDs first)
+    let markerUpdates: any[] = []
+    if (markers.length > 0) {
+      const markerIds = markers.map((m: any) => m.id)
+      const { data: updatesData } = await supabase
+        .from('more_less_updates')
+        .select('*')
+        .in('marker_id', markerIds)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      markerUpdates = updatesData || []
+    }
 
     if (!engagement) {
       return new Response(
@@ -119,7 +139,7 @@ serve(async (req) => {
     }
 
     // Build comprehensive context
-    const context = buildAnalysisContext(client, engagement, markers, snapshots, impacts, sessions, notes)
+    const context = buildAnalysisContext(client, engagement, markers, snapshots, impacts, sessions, notes, markerUpdates, voiceMemos, clientFiles)
 
     // Call Claude for analysis
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -302,7 +322,10 @@ function buildAnalysisContext(
   snapshots: any[],
   impacts: any[],
   sessions: any[],
-  notes: any[]
+  notes: any[],
+  markerUpdates: any[] = [],
+  voiceMemos: any[] = [],
+  clientFiles: any[] = []
 ): string {
   const lines: string[] = []
 
@@ -461,6 +484,41 @@ function buildAnalysisContext(
     notes.forEach((n: any) => {
       lines.push(`${n.note_date}: ${n.content}`)
       if (n.coach_curiosity) lines.push(`  [Coach Curiosity: ${n.coach_curiosity}]`)
+    })
+    lines.push('')
+  }
+
+  // More/Less Updates (progress over time)
+  if (markerUpdates.length) {
+    lines.push('=== MORE/LESS PROGRESS UPDATES ===')
+    markerUpdates.forEach((u: any) => {
+      lines.push(`${u.update_date}: Score ${u.score}`)
+      if (u.note) lines.push(`  Note: ${u.note}`)
+      if (u.exchange_note) lines.push(`  Exchange: ${u.exchange_note}`)
+    })
+    lines.push('')
+  }
+
+  // Voice Memos (transcriptions)
+  if (voiceMemos.length) {
+    lines.push('=== VOICE MEMOS ===')
+    voiceMemos.forEach((v: any) => {
+      const date = v.created_at?.split('T')[0]
+      lines.push(`${date}: ${v.title || 'Untitled'}`)
+      if (v.transcription) {
+        lines.push(`  Transcription: ${v.transcription.substring(0, 1000)}${v.transcription.length > 1000 ? '...' : ''}`)
+      }
+    })
+    lines.push('')
+  }
+
+  // Client Files (descriptions/notes)
+  if (clientFiles.length) {
+    lines.push('=== CLIENT FILES ===')
+    clientFiles.forEach((f: any) => {
+      const date = f.created_at?.split('T')[0]
+      lines.push(`${date}: ${f.file_name} (${f.file_type})`)
+      if (f.description) lines.push(`  Description: ${f.description}`)
     })
     lines.push('')
   }
