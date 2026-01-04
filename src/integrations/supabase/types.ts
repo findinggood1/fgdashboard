@@ -1330,6 +1330,71 @@ export type Database = {
           },
         ]
       }
+      weekly_narrative_maps: {
+        Row: {
+          client_email: string
+          client_map: Json
+          coach_map: Json
+          created_at: string | null
+          data_from: string | null
+          data_summary: Json | null
+          data_to: string | null
+          engagement_id: string | null
+          id: string
+          phase: string | null
+          published_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          updated_at: string | null
+          week_number: number
+        }
+        Insert: {
+          client_email: string
+          client_map: Json
+          coach_map: Json
+          created_at?: string | null
+          data_from?: string | null
+          data_summary?: Json | null
+          data_to?: string | null
+          engagement_id?: string | null
+          id?: string
+          phase?: string | null
+          published_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+          week_number: number
+        }
+        Update: {
+          client_email?: string
+          client_map?: Json
+          coach_map?: Json
+          created_at?: string | null
+          data_from?: string | null
+          data_summary?: Json | null
+          data_to?: string | null
+          engagement_id?: string | null
+          id?: string
+          phase?: string | null
+          published_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_narrative_maps_engagement_id_fkey"
+            columns: ["engagement_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_engagements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_pulse_responses: {
         Row: {
           clarity_score: number | null
