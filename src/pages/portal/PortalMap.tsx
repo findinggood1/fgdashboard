@@ -1,13 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, Superpower, WorldAskingInsight, WeeklyAction, ZoneInterpretation } from '@/lib/supabase';
 import { MoreLessMarker } from '@/hooks/useClientDetail';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, MapPin, Heart, Sparkles, Target, Flame, Quote, Compass, TrendingUp, TrendingDown, MessageCircle } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Loader2, MapPin, Heart, Sparkles, Target, Flame, Quote, Compass, TrendingUp, TrendingDown, MessageCircle, Calendar, ChevronDown, CheckCircle2, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+
+// Interface for weekly maps (client_map only)
+interface ClientMapContent {
+  story_summary?: string;
+  zone_insight?: string;
+  wins_this_week?: string[];
+  focus_next_week?: string;
+  reflection_prompt?: string;
+}
+
+interface WeeklyMapPublished {
+  id: string;
+  week_number: number;
+  phase: string | null;
+  client_map: ClientMapContent;
+  published_at: string | null;
+}
 
 // Phase labels for display
 const phaseLabels: Record<string, string> = {
@@ -50,6 +68,8 @@ export default function PortalMap() {
   const [error, setError] = useState<string | null>(null);
   const [markers, setMarkers] = useState<MoreLessMarker[]>([]);
   const [togglingAction, setTogglingAction] = useState<number | null>(null);
+  const [publishedMaps, setPublishedMaps] = useState<WeeklyMapPublished[]>([]);
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
 
   const clientEmail = user?.email || '';
 
@@ -112,6 +132,33 @@ export default function PortalMap() {
     }
 
     fetchMarkers();
+  }, [clientEmail]);
+
+  // Fetch published weekly maps
+  useEffect(() => {
+    async function fetchPublishedMaps() {
+      if (!clientEmail) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('weekly_narrative_maps')
+          .select('id, week_number, phase, client_map, published_at')
+          .eq('client_email', clientEmail)
+          .eq('status', 'published')
+          .order('week_number', { ascending: false });
+
+        if (error) throw error;
+        setPublishedMaps(data || []);
+        // Expand most recent week by default
+        if (data && data.length > 0) {
+          setExpandedWeek(data[0].week_number);
+        }
+      } catch (err) {
+        console.error('Error fetching published maps:', err);
+      }
+    }
+
+    fetchPublishedMaps();
   }, [clientEmail]);
 
   // Toggle weekly action status
@@ -196,6 +243,126 @@ export default function PortalMap() {
           Week {engagement.current_week} of 12 • <span className="font-medium">{phaseLabels[engagement.current_phase] || engagement.current_phase}</span> Phase
         </p>
       </div>
+
+      {/* Weekly Reflections Section */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-serif font-medium text-foreground flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          Your Weekly Reflections
+        </h2>
+        
+        {publishedMaps.length === 0 ? (
+          <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-primary/10">
+            <CardContent className="py-10 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Lightbulb className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Your coach will share weekly reflections here as your journey unfolds.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {publishedMaps.map((weekMap) => {
+              const clientMap = weekMap.client_map || {};
+              const isExpanded = expandedWeek === weekMap.week_number;
+              
+              return (
+                <Collapsible 
+                  key={weekMap.id} 
+                  open={isExpanded}
+                  onOpenChange={() => setExpandedWeek(isExpanded ? null : weekMap.week_number)}
+                >
+                  <Card className={isExpanded ? 'border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5' : ''}>
+                    <CollapsibleTrigger asChild>
+                      <CardContent className="py-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-sm font-semibold text-primary">{weekMap.week_number}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">Week {weekMap.week_number}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {weekMap.phase ? phaseLabels[weekMap.phase] || weekMap.phase : 'Reflection'}
+                                {weekMap.published_at && ` • ${format(new Date(weekMap.published_at), 'MMM d, yyyy')}`}
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
+                      </CardContent>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 pb-6 space-y-5 border-t border-border/50">
+                        {/* Story Summary */}
+                        {clientMap.story_summary && (
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Story Summary</h4>
+                            <p className="text-foreground">{clientMap.story_summary}</p>
+                          </div>
+                        )}
+                        
+                        {/* Zone Insight */}
+                        {clientMap.zone_insight && (
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Zone Insight</h4>
+                            <p className="text-foreground">{clientMap.zone_insight}</p>
+                          </div>
+                        )}
+                        
+                        {/* Wins This Week */}
+                        {clientMap.wins_this_week && clientMap.wins_this_week.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              Wins This Week
+                            </h4>
+                            <ul className="space-y-2">
+                              {clientMap.wins_this_week.map((win, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-foreground">
+                                  <span className="text-emerald-600 mt-1">•</span>
+                                  <span>{win}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {/* Focus Next Week */}
+                        {clientMap.focus_next_week && (
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                              <Target className="h-4 w-4 text-primary" />
+                              Focus Next Week
+                            </h4>
+                            <p className="text-foreground">{clientMap.focus_next_week}</p>
+                          </div>
+                        )}
+                        
+                        {/* Reflection Prompt */}
+                        {clientMap.reflection_prompt && (
+                          <Card className="bg-primary/5 border-primary/10">
+                            <CardContent className="py-4">
+                              <h4 className="text-sm font-medium text-primary mb-2 flex items-center gap-2">
+                                <Lightbulb className="h-4 w-4" />
+                                Reflection Prompt
+                              </h4>
+                              <p className="text-foreground italic">"{clientMap.reflection_prompt}"</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* The Story - 3Ps Section */}
       <section className="space-y-4">
