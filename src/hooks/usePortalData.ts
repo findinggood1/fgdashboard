@@ -10,6 +10,14 @@ export interface PortalSnapshot {
   growth_opportunity_category: string | null;
   total_confidence: number | null;
   total_alignment: number | null;
+  success_story: string | null;
+  question_48_hour: string | null;
+  support_network: string[] | null;
+  feelings_zone: string | null;
+  influence_zone: string | null;
+  resilience_zone: string | null;
+  ethics_zone: string | null;
+  strengths_zone: string | null;
 }
 
 export interface PortalImpactEntry {
@@ -19,15 +27,19 @@ export interface PortalImpactEntry {
   responses: Record<string, any> | null;
   integrity_line: number | null;
   fires_focus: string[] | null;
+  signals: string[] | null;
 }
 
 export interface PortalSession {
   id: string;
   created_at: string;
   session_date: string;
-  transcript_text: string | null;
+  session_number: number | null;
+  session_type: string | null;
   summary: string | null;
   key_themes: string[] | null;
+  key_quotes: string[] | null;
+  action_items: { text: string; completed: boolean }[] | null;
 }
 
 export interface PortalMoreLess {
@@ -72,7 +84,7 @@ export function usePortalData() {
       if (!email) return [];
       const { data, error } = await supabase
         .from('snapshots')
-        .select('id, created_at, overall_zone, goal, growth_opportunity_category, total_confidence, total_alignment')
+        .select('id, created_at, overall_zone, goal, growth_opportunity_category, total_confidence, total_alignment, success_story, question_48_hour, support_network, feelings_zone, influence_zone, resilience_zone, ethics_zone, strengths_zone')
         .eq('client_email', email)
         .order('created_at', { ascending: false });
 
@@ -89,7 +101,7 @@ export function usePortalData() {
       if (!email) return [];
       const { data, error } = await supabase
         .from('impact_verifications')
-        .select('id, created_at, type, responses, integrity_line, fires_focus')
+        .select('id, created_at, type, responses, integrity_line, fires_focus, signals')
         .eq('client_email', email)
         .order('created_at', { ascending: false });
 
@@ -99,14 +111,14 @@ export function usePortalData() {
     enabled: !!email,
   });
 
-  // Fetch sessions from 'session_transcripts' table
+  // Fetch sessions from 'session_transcripts' table - exclude coach-private fields
   const sessionsQuery = useQuery({
     queryKey: ['portal-sessions', email],
     queryFn: async () => {
       if (!email) return [];
       const { data, error } = await supabase
         .from('session_transcripts')
-        .select('id, created_at, session_date, transcript_text, summary, key_themes')
+        .select('id, created_at, session_date, session_number, session_type, summary, key_themes, key_quotes, action_items')
         .eq('client_email', email)
         .order('session_date', { ascending: false });
 
