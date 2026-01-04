@@ -72,6 +72,7 @@ export default function PreviewPortalHome() {
   const weekProgress = engagement ? Math.min((engagement.current_week / 12) * 100, 100) : 0;
   const firesFocus = engagement?.fires_focus || [];
   const goals = engagement?.goals || [];
+  const challenges = engagement?.challenges || [];
   
   // Get more/less markers grouped by type
   const moreMarkers = moreLessEntries.filter((m: PortalMoreLess) => m.marker_type === 'more' && m.is_active);
@@ -195,8 +196,8 @@ export default function PreviewPortalHome() {
         </section>
       )}
 
-      {/* Section 4: Goals & Progress */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Section 4: Goals, Challenges & Progress */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {goals.length > 0 && (
           <Card>
             <CardHeader>
@@ -211,6 +212,39 @@ export default function PreviewPortalHome() {
                     <Target className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                     <div className="flex-1">
                       <p className="text-sm">{goalText}</p>
+                      {firesLever && (
+                        <div className="flex gap-1 mt-1">
+                          {(() => {
+                            const config = FIRES_CONFIG[firesLever as keyof typeof FIRES_CONFIG];
+                            if (!config) return null;
+                            const Icon = config.icon;
+                            return <Icon className={cn('h-3.5 w-3.5', config.color)} />;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Challenges */}
+        {challenges.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-serif">Challenges</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {challenges.slice(0, 4).map((challenge: any, idx: number) => {
+                const challengeText = typeof challenge === 'string' ? challenge : challenge.challenge || challenge.text;
+                const firesLever = challenge.fires_lever;
+                return (
+                  <div key={idx} className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-orange-500 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm">{challengeText}</p>
                       {firesLever && (
                         <div className="flex gap-1 mt-1">
                           {(() => {
