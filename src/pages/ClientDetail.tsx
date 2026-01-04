@@ -24,6 +24,7 @@ import { MoreLessTab } from '@/components/client-detail/tabs/MoreLessTab';
 import { NotesTab } from '@/components/client-detail/tabs/NotesTab';
 import { NarrativeMapTab } from '@/components/client-detail/tabs/NarrativeMapTab';
 import { AssignmentsTab } from '@/components/client-detail/tabs/AssignmentsTab';
+import { AddSessionModal } from '@/components/client-detail/tabs/AddSessionModal';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,20 +46,23 @@ export default function ClientDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { coachData } = useAuth();
-  const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, loading, updateEngagement, refetch } = useClientDetail(email);
+  const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, nextScheduledSession, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
   const [engagementWizardOpen, setEngagementWizardOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [addSessionModalOpen, setAddSessionModalOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const latestSnapshot = snapshots[0] || null;
 
+  // Filter for only past activities
   const lastActivity = useMemo(() => {
+    const now = new Date();
     const activities = [
-      ...snapshots.map((s) => ({ date: s.created_at, type: 'snapshot' })),
-      ...impactVerifications.map((i) => ({ date: i.created_at, type: 'impact' })),
-      ...sessions.map((s) => ({ date: s.created_at, type: 'session' })),
-      ...notes.map((n) => ({ date: n.created_at, type: 'note' })),
+      ...snapshots.filter(s => new Date(s.created_at) < now).map((s) => ({ date: s.created_at, type: 'snapshot' })),
+      ...impactVerifications.filter(i => new Date(i.created_at) < now).map((i) => ({ date: i.created_at, type: 'impact' })),
+      ...sessions.filter(s => new Date(s.session_date) < now).map((s) => ({ date: s.session_date, type: 'session' })),
+      ...notes.filter(n => new Date(n.created_at) < now).map((n) => ({ date: n.created_at, type: 'note' })),
     ];
     if (activities.length === 0) return null;
     return activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -180,7 +184,7 @@ export default function ClientDetail() {
         engagement={engagement}
         latestSnapshot={latestSnapshot}
         onAddNote={() => handleAction('Add Note')}
-        onAddSession={() => handleAction('Add Session')}
+        onAddSession={() => setAddSessionModalOpen(true)}
         onUploadFile={() => setActiveTab('files')}
         onStartEngagement={() => setEngagementWizardOpen(true)}
         onStatusChange={handleStatusChange}
@@ -201,7 +205,20 @@ export default function ClientDetail() {
         onDeleted={handleDeleted}
       />
 
-      <ClientSummaryCards latestSnapshot={latestSnapshot} lastActivity={lastActivity} />
+      <AddSessionModal
+        open={addSessionModalOpen}
+        onOpenChange={setAddSessionModalOpen}
+        clientEmail={client.email}
+        engagementId={engagement?.id}
+        nextSessionNumber={(sessions.length || 0) + 1}
+        onSuccess={refetch}
+      />
+
+      <ClientSummaryCards 
+        latestSnapshot={latestSnapshot} 
+        lastActivity={lastActivity} 
+        nextScheduledSession={nextScheduledSession}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className={cn(

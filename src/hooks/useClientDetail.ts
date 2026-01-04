@@ -143,6 +143,15 @@ export interface ClientFile {
   created_at: string;
 }
 
+export interface ScheduledSession {
+  id: string;
+  client_email: string;
+  session_date: string;
+  session_type: string | null;
+  status: string | null;
+  notes: string | null;
+}
+
 export interface ClientDetailData {
   client: Client | null;
   engagement: CoachingEngagement | null;
@@ -155,6 +164,7 @@ export interface ClientDetailData {
   memos: VoiceMemo[];
   assignments: Assignment[];
   files: ClientFile[];
+  nextScheduledSession: ScheduledSession | null;
 }
 
 export function useClientDetail(email: string | undefined) {
@@ -170,6 +180,7 @@ export function useClientDetail(email: string | undefined) {
     memos: [],
     assignments: [],
     files: [],
+    nextScheduledSession: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,6 +207,7 @@ export function useClientDetail(email: string | undefined) {
         memosResult,
         assignmentsResult,
         filesResult,
+        nextSessionResult,
       ] = await Promise.all([
         supabase.from('clients').select('*').eq('email', decodedEmail).maybeSingle(),
         supabase.from('coaching_engagements').select('*').eq('client_email', decodedEmail).eq('status', 'active').maybeSingle(),
@@ -208,6 +220,14 @@ export function useClientDetail(email: string | undefined) {
         supabase.from('voice_memos').select('*').eq('client_email', decodedEmail).order('recorded_at', { ascending: false }),
         supabase.from('assignments').select('*').eq('client_email', decodedEmail).order('created_at', { ascending: false }),
         supabase.from('client_files').select('*').eq('client_email', decodedEmail).order('created_at', { ascending: false }),
+        supabase.from('scheduled_sessions')
+          .select('id, client_email, session_date, session_type, status, notes')
+          .eq('client_email', decodedEmail)
+          .eq('status', 'scheduled')
+          .gte('session_date', new Date().toISOString())
+          .order('session_date', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       // Check for errors
@@ -249,6 +269,7 @@ export function useClientDetail(email: string | undefined) {
         memos: memosResult.data || [],
         assignments: assignmentsResult.data || [],
         files: filesResult.data || [],
+        nextScheduledSession: nextSessionResult.data || null,
       });
     } catch (err) {
       console.error('Error fetching client data:', err);
