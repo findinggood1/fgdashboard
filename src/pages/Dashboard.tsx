@@ -203,7 +203,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-medium text-sm">{session.clientName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(session.sessionDate), 'EEE, MMM d')}{session.sessionTime ? ` at ${session.sessionTime}` : ''}
+                        {format(new Date(session.sessionDate), 'EEE, MMM d \'at\' h:mm a')}{session.sessionType ? ` • ${session.sessionType}` : ''}
                       </p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-muted-foreground" />

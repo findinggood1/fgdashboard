@@ -14,7 +14,7 @@ export interface UpcomingSession {
   clientEmail: string;
   clientName: string;
   sessionDate: string;
-  sessionTime: string | null;
+  sessionType: string | null;
   status: string;
 }
 
@@ -132,7 +132,7 @@ export function useDashboard() {
       console.log('8. Fetching scheduled sessions for next 7 days...');
       let scheduledQuery = supabase
         .from('scheduled_sessions')
-        .select('id, client_email, session_date, session_time, status')
+        .select('id, client_email, session_date, session_type, status')
         .gte('session_date', today.toISOString().split('T')[0])
         .lte('session_date', sevenDaysFromNow.toISOString().split('T')[0])
         .eq('status', 'scheduled');
@@ -161,7 +161,7 @@ export function useDashboard() {
       console.log('11. Fetching upcoming sessions from scheduled_sessions...');
       let upcomingQuery = supabase
         .from('scheduled_sessions')
-        .select('id, client_email, session_date, session_time, status')
+        .select('id, client_email, session_date, session_type, status')
         .gte('session_date', today.toISOString().split('T')[0])
         .lte('session_date', sevenDaysFromNow.toISOString().split('T')[0])
         .eq('status', 'scheduled')
@@ -186,7 +186,7 @@ export function useDashboard() {
             clientEmail: session.client_email,
             clientName,
             sessionDate: session.session_date,
-            sessionTime: session.session_time,
+            sessionType: session.session_type,
             status: session.status,
           });
         } else {
@@ -202,7 +202,7 @@ export function useDashboard() {
             clientEmail: session.client_email,
             clientName: clientData?.name || session.client_email,
             sessionDate: session.session_date,
-            sessionTime: session.session_time,
+            sessionType: session.session_type,
             status: session.status,
           });
         }
