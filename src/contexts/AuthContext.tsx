@@ -47,12 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoleLoading(true);
     
     try {
-      // Check coaches table first
+      // Check coaches table first (case-insensitive)
       console.log('[Auth] Checking coaches table...');
       const { data: coach, error: coachError } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', normalizedEmail)
+        .ilike('email', normalizedEmail)
+        .limit(1)
         .maybeSingle();
 
       if (coachError) {
@@ -76,12 +77,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Check clients table
+      // Check clients table (case-insensitive)
       console.log('[Auth] Checking clients table...');
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .select('*')
-        .eq('email', normalizedEmail)
+        .ilike('email', normalizedEmail)
+        .limit(1)
         .maybeSingle();
 
       if (clientError) {
@@ -101,13 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setClientData(client);
         setUserRole('client');
         
-        // Update last_login_at for approved clients
+        // Update last_login_at for approved clients (use id for reliable update)
         if (client.status === 'approved') {
           console.log('[Auth] Updating last_login_at for client');
           supabase
             .from('clients')
             .update({ last_login_at: new Date().toISOString() })
-            .eq('email', normalizedEmail)
+            .eq('id', client.id)
             .then(({ error }) => {
               if (error) console.error('[Auth] Failed to update last_login_at:', error);
             });
