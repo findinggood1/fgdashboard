@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase, Client } from '@/lib/supabase';
+import { usePortalDataForClient } from '@/hooks/usePortalDataForClient';
+import { usePortalPreview } from './PortalPreviewContext';
+import { useHydrated } from '@/hooks/useHydrated';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,13 +21,8 @@ import {
   Calendar,
   ChevronRight
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-
-interface PortalHomePreviewProps {
-  clientEmail: string;
-  clientData: Client;
-}
 
 const FIRES_CONFIG = {
   feelings: { label: 'Feelings', icon: Heart, color: 'text-rose-500' },
@@ -62,100 +58,22 @@ const ZONE_CONFIG: Record<string, { label: string; color: string; bg: string }> 
   red: { label: 'Challenged', color: 'text-red-700', bg: 'bg-red-100 dark:bg-red-900/30' },
 };
 
-export default function PortalHomePreview({ clientEmail, clientData }: PortalHomePreviewProps) {
-  // Fetch engagement
-  const { data: engagement, isLoading: engagementLoading } = useQuery({
-    queryKey: ['portal-preview-engagement', clientEmail],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('coaching_engagements')
-        .select('*')
-        .eq('client_email', clientEmail)
-        .eq('status', 'active')
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!clientEmail,
-  });
+export default function PreviewPortalHome() {
+  const previewContext = usePortalPreview();
+  const { engagement, snapshots, impactEntries, sessions, moreLessEntries, isLoading } = usePortalDataForClient(previewContext?.clientEmail);
+  const hydrated = useHydrated();
 
-  // Fetch snapshots
-  const { data: snapshots = [] } = useQuery({
-    queryKey: ['portal-preview-snapshots', clientEmail],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_snapshots')
-        .select('*')
-        .eq('client_email', clientEmail)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clientEmail,
-  });
-
-  // Fetch impact entries
-  const { data: impactEntries = [] } = useQuery({
-    queryKey: ['portal-preview-impact', clientEmail],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('impact_entries')
-        .select('*')
-        .eq('client_email', clientEmail)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clientEmail,
-  });
-
-  // Fetch sessions
-  const { data: sessions = [] } = useQuery({
-    queryKey: ['portal-preview-sessions', clientEmail],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('coaching_sessions')
-        .select('*')
-        .eq('client_email', clientEmail)
-        .order('session_date', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clientEmail,
-  });
-
-  // Fetch more/less entries
-  const { data: moreLessEntries = [] } = useQuery({
-    queryKey: ['portal-preview-moreless', clientEmail],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('more_less_entries')
-        .select('*')
-        .eq('client_email', clientEmail)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clientEmail,
-  });
-
-  const firstName = clientData?.name?.split(' ')[0] || 'Client';
+  const firstName = previewContext?.clientData?.name?.split(' ')[0] || 'Client';
   const latestSnapshot = snapshots[0];
+  const snapshotAge = hydrated && latestSnapshot 
+    ? differenceInDays(new Date(), parseISO(latestSnapshot.created_at)) 
+    : null;
+
   const weekProgress = engagement ? Math.min((engagement.current_week / 12) * 100, 100) : 0;
   const firesFocus = engagement?.fires_focus || [];
   const goals = engagement?.goals || [];
   const latestMoreLess = moreLessEntries[0];
 
-  // Get recent activity
   const recentActivity = [
     ...snapshots.slice(0, 2).map(s => ({ 
       type: 'snapshot' as const, 
@@ -179,8 +97,8 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  if (engagementLoading) {
-    return <PortalPreviewSkeleton />;
+  if (isLoading) {
+    return <PortalHomeSkeleton />;
   }
 
   return (
@@ -206,7 +124,7 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
           </div>
         ) : (
           <p className="text-muted-foreground">
-            No active engagement found
+            Your journey is being set up...
           </p>
         )}
         {engagement && (
@@ -216,27 +134,15 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
         )}
       </section>
 
-      {/* Section 2: The Story We're Strengthening */}
+      {/* Section 2: The Story */}
       <section>
         <h2 className="text-xl font-serif font-medium text-foreground mb-4">
           The Story We're Strengthening
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StoryCard
-            title="Present"
-            content={engagement?.story_present}
-            placeholder="To be discovered..."
-          />
-          <StoryCard
-            title="Past"
-            content={engagement?.story_past}
-            placeholder="To be discovered..."
-          />
-          <StoryCard
-            title="Potential"
-            content={engagement?.story_potential}
-            placeholder="To be discovered..."
-          />
+          <StoryCard title="Present" content={engagement?.story_present} placeholder="To be discovered..." />
+          <StoryCard title="Past" content={engagement?.story_past} placeholder="To be discovered..." />
+          <StoryCard title="Potential" content={engagement?.story_potential} placeholder="To be discovered..." />
         </div>
       </section>
 
@@ -288,7 +194,6 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
 
       {/* Section 4: Goals & Progress */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Goals */}
         {goals.length > 0 && (
           <Card>
             <CardHeader>
@@ -319,7 +224,6 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
           </Card>
         )}
 
-        {/* More/Less Progress */}
         {latestMoreLess && (
           <Card>
             <CardHeader>
@@ -364,7 +268,6 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                {/* Zone Badge */}
                 {latestSnapshot.zone && (
                   <div
                     className={cn(
@@ -379,7 +282,6 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
                   </div>
                 )}
 
-                {/* Mini FIRES breakdown */}
                 <div className="flex-1 space-y-3">
                   {latestSnapshot.scores && Object.entries(latestSnapshot.scores).map(([key, value]) => {
                     const config = FIRES_CONFIG[key as keyof typeof FIRES_CONFIG];
@@ -390,7 +292,7 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
                         <Icon className={cn('h-4 w-4 shrink-0', config.color)} />
                         <span className="text-sm w-20">{config.label}</span>
                         <Progress value={(value as number) * 10} className="flex-1 h-2" />
-                        <span className="text-sm text-muted-foreground w-8">{String(value)}</span>
+                        <span className="text-sm text-muted-foreground w-8">{value}</span>
                       </div>
                     );
                   })}
@@ -399,8 +301,14 @@ export default function PortalHomePreview({ clientEmail, clientData }: PortalHom
 
               <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
                 <p className="text-sm text-muted-foreground">
-                  From {format(parseISO(latestSnapshot.created_at), 'MMMM d, yyyy')} snapshot
+                  From your {format(parseISO(latestSnapshot.created_at), 'MMMM d, yyyy')} snapshot
                 </p>
+                {snapshotAge !== null && snapshotAge > 30 && (
+                  <Button size="sm" variant="outline" disabled>
+                    <Camera className="h-4 w-4 mr-2" />
+                    Take New Snapshot
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -459,14 +367,14 @@ function StoryCard({ title, content, placeholder }: { title: string; content?: s
           'text-sm leading-relaxed',
           content ? 'text-foreground' : 'text-muted-foreground italic'
         )}>
-          {content ?? placeholder}
+          {content || placeholder}
         </p>
       </CardContent>
     </Card>
   );
 }
 
-function PortalPreviewSkeleton() {
+function PortalHomeSkeleton() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
