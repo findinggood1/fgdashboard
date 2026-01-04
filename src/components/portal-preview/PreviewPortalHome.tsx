@@ -19,7 +19,10 @@ import {
   Camera,
   FileText,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  ExternalLink,
+  Crosshair,
+  Zap
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -312,7 +315,73 @@ export default function PreviewPortalHome() {
         )}
       </section>
 
-      {/* Section 5: FIRES Snapshot */}
+      {/* Section 5: My Tools */}
+      <section>
+        <h2 className="text-xl font-serif font-medium text-foreground mb-4">
+          My Tools
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <a
+            href="https://firesalignment.lovable.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
+            <Card interactive className="h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border-primary/20 hover:border-primary/40">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Crosshair className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                        FIRES Alignment Builder
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Take your monthly snapshot
+                      </p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </a>
+          <a
+            href="https://fgimpact.lovable.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
+            <Card interactive className="h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border-primary/20 hover:border-primary/40">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                      <Zap className="h-6 w-6 text-amber-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                        Impact Amplifier
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Capture today's impact
+                      </p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 text-center">
+          You may need to sign in separately until we complete our platform integration.
+        </p>
+      </section>
+
+      {/* Section 6: FIRES Snapshot */}
       {latestSnapshot && (
         <section>
           <h2 className="text-xl font-serif font-medium text-foreground mb-4">
