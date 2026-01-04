@@ -141,13 +141,19 @@ function SnapshotCard({ snapshot }: { snapshot: PortalSnapshot }) {
   const [isOpen, setIsOpen] = useState(false);
   const goalPreview = snapshot.goal ? (snapshot.goal.length > 80 ? snapshot.goal.slice(0, 80) + '...' : snapshot.goal) : null;
 
-  const zoneBreakdown = [
-    { key: 'feelings', zone: snapshot.feelings_zone },
-    { key: 'influence', zone: snapshot.influence_zone },
-    { key: 'resilience', zone: snapshot.resilience_zone },
-    { key: 'ethics', zone: snapshot.ethics_zone },
-    { key: 'strengths', zone: snapshot.strengths_zone },
-  ].filter(z => z.zone);
+  const zoneBreakdown = snapshot.zone_breakdown ? [
+    { key: 'feelings', zone: snapshot.zone_breakdown.feelings },
+    { key: 'influence', zone: snapshot.zone_breakdown.influence },
+    { key: 'resilience', zone: snapshot.zone_breakdown.resilience },
+    { key: 'ethics', zone: snapshot.zone_breakdown.ethics },
+    { key: 'strengths', zone: snapshot.zone_breakdown.strengths },
+  ].filter(z => z.zone) : [];
+
+  // Combine support networks
+  const supportNetwork = [...(snapshot.future_support || []), ...(snapshot.past_support || [])];
+
+  // Get past story from ps_answers
+  const pastStory = snapshot.ps_answers?.story || snapshot.ps_answers?.summary || null;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -203,10 +209,10 @@ function SnapshotCard({ snapshot }: { snapshot: PortalSnapshot }) {
               </div>
             )}
 
-            {snapshot.success_story && (
+            {pastStory && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Success Story</p>
-                <p className="text-sm">{snapshot.success_story}</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Past Story</p>
+                <p className="text-sm">{pastStory}</p>
               </div>
             )}
 
@@ -230,18 +236,18 @@ function SnapshotCard({ snapshot }: { snapshot: PortalSnapshot }) {
               </div>
             )}
 
-            {snapshot.question_48_hour && (
+            {snapshot.forty_eight_hour_question && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">48-Hour Question</p>
-                <p className="text-sm italic">"{snapshot.question_48_hour}"</p>
+                <p className="text-sm italic">"{snapshot.forty_eight_hour_question}"</p>
               </div>
             )}
 
-            {snapshot.support_network && snapshot.support_network.length > 0 && (
+            {supportNetwork.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Support Network</p>
                 <div className="flex flex-wrap gap-1">
-                  {snapshot.support_network.map((person, idx) => (
+                  {supportNetwork.map((person, idx) => (
                     <Badge key={idx} variant="secondary">{person}</Badge>
                   ))}
                 </div>
@@ -336,13 +342,19 @@ function ImpactCard({ entry }: { entry: PortalImpactEntry }) {
               </div>
             )}
 
-            {entry.signals && entry.signals.length > 0 && (
+            {(entry.ownership_signal || entry.confidence_signal || entry.clarity_signal) && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">Signals</p>
                 <div className="flex flex-wrap gap-1">
-                  {entry.signals.map((signal, idx) => (
-                    <Badge key={idx} variant="secondary">{signal}</Badge>
-                  ))}
+                  {entry.ownership_signal && (
+                    <Badge variant="secondary">Ownership: {entry.ownership_signal}</Badge>
+                  )}
+                  {entry.confidence_signal && (
+                    <Badge variant="secondary">Confidence: {entry.confidence_signal}</Badge>
+                  )}
+                  {entry.clarity_signal && (
+                    <Badge variant="secondary">Clarity: {entry.clarity_signal}</Badge>
+                  )}
                 </div>
               </div>
             )}

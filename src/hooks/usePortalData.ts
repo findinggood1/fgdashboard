@@ -8,26 +8,36 @@ export interface PortalSnapshot {
   overall_zone: string | null;
   goal: string | null;
   growth_opportunity_category: string | null;
+  growth_opportunity_zone: string | null;
+  owning_highlight_category: string | null;
+  owning_highlight_zone: string | null;
   total_confidence: number | null;
   total_alignment: number | null;
-  success_story: string | null;
-  question_48_hour: string | null;
-  support_network: string[] | null;
-  feelings_zone: string | null;
-  influence_zone: string | null;
-  resilience_zone: string | null;
-  ethics_zone: string | null;
-  strengths_zone: string | null;
+  fs_answers: Record<string, any> | null;
+  ps_answers: Record<string, any> | null;
+  confidence_scores: Record<string, number> | null;
+  alignment_scores: Record<string, number> | null;
+  zone_breakdown: Record<string, string> | null;
+  forty_eight_hour_question: string | null;
+  future_support: string[] | null;
+  past_support: string[] | null;
+  narrative: string | null;
 }
 
 export interface PortalImpactEntry {
   id: string;
   created_at: string;
   type: string;
+  timeframe: string | null;
+  intensity: number | null;
+  fires_focus: string[] | null;
   responses: Record<string, any> | null;
   integrity_line: number | null;
-  fires_focus: string[] | null;
-  signals: string[] | null;
+  ownership_signal: string | null;
+  confidence_signal: string | null;
+  clarity_signal: string | null;
+  interpretation: string | null;
+  evidence: string | null;
 }
 
 export interface PortalSession {
@@ -84,7 +94,7 @@ export function usePortalData() {
       if (!email) return [];
       const { data, error } = await supabase
         .from('snapshots')
-        .select('id, created_at, overall_zone, goal, growth_opportunity_category, total_confidence, total_alignment, success_story, question_48_hour, support_network, feelings_zone, influence_zone, resilience_zone, ethics_zone, strengths_zone')
+        .select('id, created_at, overall_zone, goal, growth_opportunity_category, growth_opportunity_zone, owning_highlight_category, owning_highlight_zone, total_confidence, total_alignment, fs_answers, ps_answers, confidence_scores, alignment_scores, zone_breakdown, forty_eight_hour_question, future_support, past_support, narrative')
         .eq('client_email', email)
         .order('created_at', { ascending: false });
 
@@ -101,7 +111,7 @@ export function usePortalData() {
       if (!email) return [];
       const { data, error } = await supabase
         .from('impact_verifications')
-        .select('id, created_at, type, responses, integrity_line, fires_focus, signals')
+        .select('id, created_at, type, timeframe, intensity, fires_focus, responses, integrity_line, ownership_signal, confidence_signal, clarity_signal, interpretation, evidence')
         .eq('client_email', email)
         .order('created_at', { ascending: false });
 
