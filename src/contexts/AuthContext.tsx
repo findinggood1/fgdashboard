@@ -2,16 +2,25 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, UserRole, Coach, Client } from '@/lib/supabase';
 
+export interface UserRoles {
+  isAdmin: boolean;
+  isCoach: boolean;
+  isClient: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   userRole: UserRole;
+  userRoles: UserRoles;
+  activeView: 'admin' | 'coach' | 'client' | null;
   coachData: Coach | null;
   clientData: Client | null;
   loading: boolean;
   roleLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  switchView: (view: 'admin' | 'coach' | 'client') => void;
 }
 
 // Keep a single context instance even during Vite HMR / fast refresh.
@@ -22,10 +31,14 @@ const AuthContext = (
 );
 (globalThis as any)[AUTH_CONTEXT_KEY] = AuthContext;
 
+const DEFAULT_ROLES: UserRoles = { isAdmin: false, isCoach: false, isClient: false };
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [userRoles, setUserRoles] = useState<UserRoles>(DEFAULT_ROLES);
+  const [activeView, setActiveView] = useState<'admin' | 'coach' | 'client' | null>(null);
   const [coachData, setCoachData] = useState<Coach | null>(null);
   const [clientData, setClientData] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,10 +57,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCoachData(null);
     setClientData(null);
     setUserRole(null);
+    setUserRoles(DEFAULT_ROLES);
+    setActiveView(null);
     setRoleLoading(true);
     
     try {
-      // Check coaches table first (case-insensitive)
+      const roles: UserRoles = { isAdmin: false, isCoach: false, isClient: false };
+      let foundCoachData: Coach | null = null;
+      let foundClientData: Client | null = null;
+
+      // Check coaches table (case-insensitive)
       console.log('[Auth] Checking coaches table...');
       const { data: coach, error: coachError } = await supabase
         .from('coaches')
@@ -69,12 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (coach) {
-        const role = coach.is_admin ? 'admin' : 'coach';
-        console.log('[Auth] Found coach, setting role:', role);
-        setCoachData(coach);
-        setUserRole(role);
-        setRoleLoading(false);
-        return;
+        foundCoachData = coach;
+        roles.isCoach = true;
+        if (coach.is_admin) {
+          roles.isAdmin = true;
+        }
       }
 
       // Check clients table (case-insensitive)
@@ -99,11 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (client) {
-        console.log('[Auth] Found client, status:', client.status);
-        setClientData(client);
-        setUserRole('client');
+        foundClientData = client;
+        roles.isClient = true;
         
-        // Update last_login_at for approved clients (use id for reliable update)
+        // Update last_login_at for approved clients
         if (client.status === 'approved') {
           console.log('[Auth] Updating last_login_at for client');
           supabase
@@ -114,18 +131,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (error) console.error('[Auth] Failed to update last_login_at:', error);
             });
         }
-        
-        setRoleLoading(false);
-        return;
       }
 
-      console.log('[Auth] No coach or client found, userRole = null');
-      setUserRole(null);
+      // Set all role data
+      setUserRoles(roles);
+      setCoachData(foundCoachData);
+      setClientData(foundClientData);
+
+      // Determine primary role and default active view (highest priority first)
+      let primaryRole: UserRole = null;
+      let defaultView: 'admin' | 'coach' | 'client' | null = null;
+
+      if (roles.isAdmin) {
+        primaryRole = 'admin';
+        defaultView = 'admin';
+      } else if (roles.isCoach) {
+        primaryRole = 'coach';
+        defaultView = 'coach';
+      } else if (roles.isClient) {
+        primaryRole = 'client';
+        defaultView = 'client';
+      }
+
+      console.log('[Auth] Roles determined:', roles, 'Primary:', primaryRole, 'DefaultView:', defaultView);
+      setUserRole(primaryRole);
+      setActiveView(defaultView);
+
     } catch (error) {
       console.error('[Auth] determineUserRole exception:', error);
       // Only set null if this is still the current check
       if (checkId === roleCheckIdRef.current) {
         setUserRole(null);
+        setUserRoles(DEFAULT_ROLES);
+        setActiveView(null);
       }
     } finally {
       // Only finish loading if this is still the current check
@@ -134,6 +172,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] roleLoading set to false, checkId:', checkId);
       }
     }
+  };
+
+  const switchView = (view: 'admin' | 'coach' | 'client') => {
+    console.log('[Auth] Switching view to:', view);
+    setActiveView(view);
   };
 
   useEffect(() => {
@@ -153,6 +196,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[Auth] No session/user, clearing role data');
           setRoleLoading(false);
           setUserRole(null);
+          setUserRoles(DEFAULT_ROLES);
+          setActiveView(null);
           setCoachData(null);
           setClientData(null);
         }
@@ -193,6 +238,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setSession(null);
     setUserRole(null);
+    setUserRoles(DEFAULT_ROLES);
+    setActiveView(null);
     setCoachData(null);
     setClientData(null);
   };
@@ -202,12 +249,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       session,
       userRole,
+      userRoles,
+      activeView,
       coachData,
       clientData,
       loading,
       roleLoading,
       signIn,
       signOut,
+      switchView,
     }}>
       {children}
     </AuthContext.Provider>

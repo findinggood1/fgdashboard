@@ -1,6 +1,7 @@
 import { Outlet, NavLink, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { Home, Map, MessageCircle, LogOut, Loader2, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -107,6 +108,7 @@ export default function PortalLayout() {
 
             {/* User Menu */}
             <div className="flex items-center gap-2 sm:gap-3">
+              <RoleSwitcher />
               <span className="text-sm text-muted-foreground hidden sm:block">
                 {firstName}
               </span>
