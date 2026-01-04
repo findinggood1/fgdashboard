@@ -288,33 +288,6 @@ export default function PortalMap() {
         </section>
       )}
 
-      {/* Weekly Actions */}
-      {engagement.weekly_actions && engagement.weekly_actions.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-serif font-medium text-foreground flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            This Week's Actions
-          </h2>
-          <Card>
-            <CardContent className="py-6 space-y-3">
-              {engagement.weekly_actions.map((action, idx) => (
-                <div key={idx} className="flex items-start gap-3">
-                  <Checkbox
-                    checked={action.status === 'completed'}
-                    onCheckedChange={() => handleToggleAction(idx)}
-                    disabled={togglingAction === idx}
-                    className="mt-0.5"
-                  />
-                  <span className={action.status === 'completed' ? 'line-through text-muted-foreground' : ''}>
-                    {action.action}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
       {/* More/Less Markers */}
       {markers.length > 0 && (
         <section className="space-y-4">
