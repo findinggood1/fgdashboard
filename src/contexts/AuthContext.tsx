@@ -143,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user?.email) {
+          setRoleLoading(true); // Set BEFORE the async call to prevent race condition
           setTimeout(() => {
             determineUserRole(session.user.email!);
           }, 0);
