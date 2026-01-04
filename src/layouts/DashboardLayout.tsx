@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/AppSidebar';
 import { RecordMemoButton } from '@/components/RecordMemoButton';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { cn } from '@/lib/utils';
 import { Loader2, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -88,12 +89,13 @@ export default function DashboardLayout() {
               />
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-2 ml-3">
+          <div className="flex items-center gap-2 ml-3 flex-1">
             <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
               <span className="text-xs font-serif font-bold text-accent-foreground">FG</span>
             </div>
             <span className="font-serif font-semibold text-sidebar-foreground">Finding Good</span>
           </div>
+          <RoleSwitcher />
         </header>
       )}
 

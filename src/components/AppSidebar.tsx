@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 import {
   LayoutDashboard,
   Users,
@@ -152,9 +153,10 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
       </nav>
 
       {/* User Info & Logout */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-3">
+        {!collapsed && <RoleSwitcher />}
         {!collapsed && coachData && (
-          <div className="mb-3 px-1">
+          <div className="px-1">
             <p className="text-sm font-medium text-sidebar-foreground truncate">{coachData.name}</p>
             <p className="text-xs text-sidebar-foreground/60 truncate">{coachData.email}</p>
             <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-sidebar-accent text-sidebar-accent-foreground">
