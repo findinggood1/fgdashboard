@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePortalData } from '@/hooks/usePortalData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -85,40 +85,41 @@ export default function PortalJourney() {
                   <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row items-start gap-4">
                       {/* Zone Badge */}
-                      {snapshot.zone && (
+                      {snapshot.overall_zone && (
                         <div
                           className={cn(
                             'px-4 py-3 rounded-lg text-center shrink-0',
-                            ZONE_CONFIG[snapshot.zone]?.bg || 'bg-muted'
+                            ZONE_CONFIG[snapshot.overall_zone]?.bg || 'bg-muted'
                           )}
                         >
-                          <Flame className={cn('h-6 w-6 mx-auto mb-1', ZONE_CONFIG[snapshot.zone]?.color)} />
-                          <p className={cn('text-sm font-medium', ZONE_CONFIG[snapshot.zone]?.color)}>
-                            {ZONE_CONFIG[snapshot.zone]?.label || snapshot.zone}
+                          <Flame className={cn('h-6 w-6 mx-auto mb-1', ZONE_CONFIG[snapshot.overall_zone]?.color)} />
+                          <p className={cn('text-sm font-medium', ZONE_CONFIG[snapshot.overall_zone]?.color)}>
+                            {ZONE_CONFIG[snapshot.overall_zone]?.label || snapshot.overall_zone}
                           </p>
                         </div>
                       )}
 
-                      {/* Scores */}
+                      {/* Snapshot Info */}
                       <div className="flex-1 space-y-2">
                         <p className="text-sm text-muted-foreground mb-3">
                           {format(parseISO(snapshot.created_at), 'MMMM d, yyyy')}
                         </p>
-                        {snapshot.scores && (
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                            {Object.entries(snapshot.scores).map(([key, value]) => {
-                              const config = FIRES_CONFIG[key as keyof typeof FIRES_CONFIG];
-                              if (!config) return null;
-                              const Icon = config.icon;
-                              return (
-                                <div key={key} className="flex items-center gap-2">
-                                  <Icon className={cn('h-4 w-4', config.color)} />
-                                  <span className="text-sm font-medium">{value}</span>
-                                </div>
-                              );
-                            })}
+                        <div className="space-y-2">
+                          {snapshot.goal && (
+                            <p className="text-sm"><span className="text-muted-foreground">Goal:</span> {snapshot.goal}</p>
+                          )}
+                          {snapshot.growth_opportunity_category && (
+                            <p className="text-sm"><span className="text-muted-foreground">Growth Area:</span> {snapshot.growth_opportunity_category}</p>
+                          )}
+                          <div className="flex gap-4 pt-1">
+                            {snapshot.total_confidence !== null && (
+                              <span className="text-sm">Confidence: <strong>{snapshot.total_confidence}</strong></span>
+                            )}
+                            {snapshot.total_alignment !== null && (
+                              <span className="text-sm">Alignment: <strong>{snapshot.total_alignment}</strong></span>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -147,16 +148,18 @@ export default function PortalJourney() {
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline">
-                            {entry.impact_type === 'self' ? 'Impact on Self' : 'Impact on Others'}
+                            {entry.type === 'self' ? 'Impact on Self' : 'Impact on Others'}
                           </Badge>
                           <span className="text-sm text-muted-foreground">
                             {format(parseISO(entry.created_at), 'MMM d, yyyy')}
                           </span>
                         </div>
-                        <p className="text-sm leading-relaxed">{entry.entry_text}</p>
-                        {entry.fires_elements && entry.fires_elements.length > 0 && (
+                        {entry.integrity_line !== null && (
+                          <p className="text-sm">Integrity Line: <strong>{entry.integrity_line}</strong></p>
+                        )}
+                        {entry.fires_focus && entry.fires_focus.length > 0 && (
                           <div className="flex gap-2 pt-1">
-                            {entry.fires_elements.map((el) => {
+                            {entry.fires_focus.map((el) => {
                               const config = FIRES_CONFIG[el as keyof typeof FIRES_CONFIG];
                               if (!config) return null;
                               const Icon = config.icon;
@@ -184,20 +187,19 @@ export default function PortalJourney() {
             />
           ) : (
             <div className="grid gap-4">
-              {sessions.map((session) => (
+              {sessions.map((session, index) => (
                 <Card key={session.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
                         <span className="text-sm font-semibold text-accent-foreground">
-                          {session.session_number}
+                          {sessions.length - index}
                         </span>
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-medium">
-                            Session {session.session_number}
-                            {session.topic && `: ${session.topic}`}
+                            Session {sessions.length - index}
                           </h3>
                         </div>
                         <p className="text-sm text-muted-foreground">
@@ -205,6 +207,15 @@ export default function PortalJourney() {
                         </p>
                         {session.summary && (
                           <p className="text-sm leading-relaxed pt-2">{session.summary}</p>
+                        )}
+                        {session.key_themes && session.key_themes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-2">
+                            {session.key_themes.map((theme, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {theme}
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

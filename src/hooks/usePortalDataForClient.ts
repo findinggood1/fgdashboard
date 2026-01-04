@@ -4,32 +4,40 @@ import { supabase, CoachingEngagement } from '@/lib/supabase';
 export interface PortalSnapshot {
   id: string;
   created_at: string;
-  zone: string | null;
-  scores: Record<string, number> | null;
+  overall_zone: string | null;
+  goal: string | null;
+  growth_opportunity_category: string | null;
+  total_confidence: number | null;
+  total_alignment: number | null;
 }
 
 export interface PortalImpactEntry {
   id: string;
   created_at: string;
-  impact_type: string;
-  entry_text: string;
-  fires_elements: string[] | null;
+  type: string;
+  responses: Record<string, any> | null;
+  integrity_line: number | null;
+  fires_focus: string[] | null;
 }
 
 export interface PortalSession {
   id: string;
+  created_at: string;
   session_date: string;
-  session_number: number;
+  transcript_text: string | null;
   summary: string | null;
-  topic: string | null;
+  key_themes: string[] | null;
 }
 
 export interface PortalMoreLess {
   id: string;
-  week_number: number;
-  more_of: string[];
-  less_of: string[];
-  created_at: string;
+  marker_text: string;
+  marker_type: 'more' | 'less';
+  baseline_score: number | null;
+  current_score: number | null;
+  target_score: number | null;
+  fires_connection: string | null;
+  is_active: boolean;
 }
 
 /**
@@ -57,14 +65,14 @@ export function usePortalDataForClient(clientEmail: string | undefined) {
     enabled: !!clientEmail,
   });
 
-  // Fetch snapshots
+  // Fetch snapshots from 'snapshots' table
   const snapshotsQuery = useQuery({
     queryKey: ['portal-snapshots', clientEmail],
     queryFn: async () => {
       if (!clientEmail) return [];
       const { data, error } = await supabase
-        .from('client_snapshots')
-        .select('id, created_at, zone, scores')
+        .from('snapshots')
+        .select('id, created_at, overall_zone, goal, growth_opportunity_category, total_confidence, total_alignment')
         .eq('client_email', clientEmail)
         .order('created_at', { ascending: false });
 
@@ -74,14 +82,14 @@ export function usePortalDataForClient(clientEmail: string | undefined) {
     enabled: !!clientEmail,
   });
 
-  // Fetch impact entries
+  // Fetch impact entries from 'impact_verifications' table
   const impactQuery = useQuery({
     queryKey: ['portal-impact', clientEmail],
     queryFn: async () => {
       if (!clientEmail) return [];
       const { data, error } = await supabase
-        .from('client_impact_entries')
-        .select('id, created_at, impact_type, entry_text, fires_elements')
+        .from('impact_verifications')
+        .select('id, created_at, type, responses, integrity_line, fires_focus')
         .eq('client_email', clientEmail)
         .order('created_at', { ascending: false });
 
@@ -91,14 +99,14 @@ export function usePortalDataForClient(clientEmail: string | undefined) {
     enabled: !!clientEmail,
   });
 
-  // Fetch sessions
+  // Fetch sessions from 'session_transcripts' table
   const sessionsQuery = useQuery({
     queryKey: ['portal-sessions', clientEmail],
     queryFn: async () => {
       if (!clientEmail) return [];
       const { data, error } = await supabase
-        .from('coaching_sessions')
-        .select('id, session_date, session_number, summary, topic')
+        .from('session_transcripts')
+        .select('id, created_at, session_date, transcript_text, summary, key_themes')
         .eq('client_email', clientEmail)
         .order('session_date', { ascending: false });
 
@@ -108,16 +116,16 @@ export function usePortalDataForClient(clientEmail: string | undefined) {
     enabled: !!clientEmail,
   });
 
-  // Fetch more/less entries
+  // Fetch more/less markers from 'more_less_markers' table
   const moreLessQuery = useQuery({
     queryKey: ['portal-moreless', clientEmail],
     queryFn: async () => {
       if (!clientEmail) return [];
       const { data, error } = await supabase
-        .from('client_more_less')
-        .select('id, week_number, more_of, less_of, created_at')
+        .from('more_less_markers')
+        .select('id, marker_text, marker_type, baseline_score, current_score, target_score, fires_connection, is_active')
         .eq('client_email', clientEmail)
-        .order('week_number', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as PortalMoreLess[];
