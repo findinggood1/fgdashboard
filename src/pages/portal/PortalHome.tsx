@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { usePortalData } from '@/hooks/usePortalData';
+import { usePortalData, PortalMoreLess } from '@/hooks/usePortalData';
 import { useHydrated } from '@/hooks/useHydrated';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -80,27 +80,28 @@ export default function PortalHome() {
   // Get goals with FIRES badges
   const goals = engagement?.goals || [];
 
-  // Get more/less data for progress bars
-  const latestMoreLess = moreLessEntries[0];
+  // Get more/less markers grouped by type
+  const moreMarkers = moreLessEntries.filter((m: PortalMoreLess) => m.marker_type === 'more' && m.is_active);
+  const lessMarkers = moreLessEntries.filter((m: PortalMoreLess) => m.marker_type === 'less' && m.is_active);
 
   // Get recent activity (last 5 items)
   const recentActivity = [
     ...snapshots.slice(0, 2).map(s => ({ 
       type: 'snapshot' as const, 
       date: s.created_at, 
-      title: `FIRES Snapshot - ${s.zone || 'Completed'}`,
+      title: `FIRES Snapshot - ${s.overall_zone || 'Completed'}`,
       icon: Camera 
     })),
     ...impactEntries.slice(0, 2).map(i => ({ 
       type: 'impact' as const, 
       date: i.created_at, 
-      title: `Impact Entry - ${i.impact_type === 'self' ? 'Self' : 'Others'}`,
+      title: `Impact Verification - ${i.type === 'self' ? 'Self' : 'Others'}`,
       icon: FileText 
     })),
     ...sessions.slice(0, 2).map(s => ({ 
       type: 'session' as const, 
       date: s.session_date, 
-      title: `Session ${s.session_number}${s.topic ? ` - ${s.topic}` : ''}`,
+      title: `Session${s.summary ? ` - ${s.summary.slice(0, 30)}...` : ''}`,
       icon: Calendar 
     })),
   ]
@@ -248,36 +249,50 @@ export default function PortalHome() {
         )}
 
         {/* More/Less Progress */}
-        {latestMoreLess && (
+        {(moreMarkers.length > 0 || lessMarkers.length > 0) && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-serif">More / Less</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
-                  <TrendingUp className="h-4 w-4" />
-                  More of
-                </div>
-                {latestMoreLess.more_of?.slice(0, 2).map((item: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <span className="text-sm flex-1 truncate">{item}</span>
-                    <Progress value={65 + idx * 15} className="w-24 h-2" />
+              {moreMarkers.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
+                    <TrendingUp className="h-4 w-4" />
+                    More of
                   </div>
-                ))}
-              </div>
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-rose-600">
-                  <TrendingDown className="h-4 w-4" />
-                  Less of
+                  {moreMarkers.slice(0, 2).map((marker: PortalMoreLess) => {
+                    const progress = marker.target_score && marker.baseline_score && marker.current_score
+                      ? ((marker.current_score - marker.baseline_score) / (marker.target_score - marker.baseline_score)) * 100
+                      : 50;
+                    return (
+                      <div key={marker.id} className="flex items-center gap-3">
+                        <span className="text-sm flex-1 truncate">{marker.marker_text}</span>
+                        <Progress value={Math.min(100, Math.max(0, progress))} className="w-24 h-2" />
+                      </div>
+                    );
+                  })}
                 </div>
-                {latestMoreLess.less_of?.slice(0, 2).map((item: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <span className="text-sm flex-1 truncate">{item}</span>
-                    <Progress value={35 - idx * 10} className="w-24 h-2" />
+              )}
+              {lessMarkers.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-rose-600">
+                    <TrendingDown className="h-4 w-4" />
+                    Less of
                   </div>
-                ))}
-              </div>
+                  {lessMarkers.slice(0, 2).map((marker: PortalMoreLess) => {
+                    const progress = marker.target_score && marker.baseline_score && marker.current_score
+                      ? ((marker.baseline_score - marker.current_score) / (marker.baseline_score - marker.target_score)) * 100
+                      : 50;
+                    return (
+                      <div key={marker.id} className="flex items-center gap-3">
+                        <span className="text-sm flex-1 truncate">{marker.marker_text}</span>
+                        <Progress value={Math.min(100, Math.max(0, progress))} className="w-24 h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -293,35 +308,48 @@ export default function PortalHome() {
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                 {/* Zone Badge */}
-                {latestSnapshot.zone && (
+                {latestSnapshot.overall_zone && (
                   <div
                     className={cn(
                       'px-6 py-4 rounded-xl text-center',
-                      ZONE_CONFIG[latestSnapshot.zone]?.bg || 'bg-muted'
+                      ZONE_CONFIG[latestSnapshot.overall_zone]?.bg || 'bg-muted'
                     )}
                   >
-                    <Flame className={cn('h-8 w-8 mx-auto mb-2', ZONE_CONFIG[latestSnapshot.zone]?.color)} />
-                    <p className={cn('text-lg font-serif font-medium', ZONE_CONFIG[latestSnapshot.zone]?.color)}>
-                      {ZONE_CONFIG[latestSnapshot.zone]?.label || latestSnapshot.zone}
+                    <Flame className={cn('h-8 w-8 mx-auto mb-2', ZONE_CONFIG[latestSnapshot.overall_zone]?.color)} />
+                    <p className={cn('text-lg font-serif font-medium', ZONE_CONFIG[latestSnapshot.overall_zone]?.color)}>
+                      {ZONE_CONFIG[latestSnapshot.overall_zone]?.label || latestSnapshot.overall_zone}
                     </p>
                   </div>
                 )}
 
-                {/* Mini FIRES breakdown */}
+                {/* Snapshot Info */}
                 <div className="flex-1 space-y-3">
-                  {latestSnapshot.scores && Object.entries(latestSnapshot.scores).map(([key, value]) => {
-                    const config = FIRES_CONFIG[key as keyof typeof FIRES_CONFIG];
-                    if (!config) return null;
-                    const Icon = config.icon;
-                    return (
-                      <div key={key} className="flex items-center gap-3">
-                        <Icon className={cn('h-4 w-4 shrink-0', config.color)} />
-                        <span className="text-sm w-20">{config.label}</span>
-                        <Progress value={(value as number) * 10} className="flex-1 h-2" />
-                        <span className="text-sm text-muted-foreground w-8">{value}</span>
+                  {latestSnapshot.goal && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Goal</p>
+                      <p className="text-sm font-medium">{latestSnapshot.goal}</p>
+                    </div>
+                  )}
+                  {latestSnapshot.growth_opportunity_category && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Growth Opportunity</p>
+                      <p className="text-sm font-medium">{latestSnapshot.growth_opportunity_category}</p>
+                    </div>
+                  )}
+                  <div className="flex gap-6">
+                    {latestSnapshot.total_confidence !== null && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Confidence</p>
+                        <p className="text-lg font-semibold">{latestSnapshot.total_confidence}</p>
                       </div>
-                    );
-                  })}
+                    )}
+                    {latestSnapshot.total_alignment !== null && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Alignment</p>
+                        <p className="text-lg font-semibold">{latestSnapshot.total_alignment}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
