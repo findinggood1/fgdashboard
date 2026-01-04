@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subDays, startOfDay, endOfDay, startOfMonth, subMonths, isAfter, isBefore } from 'date-fns';
+import { subDays, startOfMonth, subMonths, isBefore } from 'date-fns';
 
 export interface DashboardStats {
   activeClients: number;
@@ -14,7 +14,8 @@ export interface UpcomingSession {
   clientEmail: string;
   clientName: string;
   sessionDate: string;
-  sessionNumber: number;
+  sessionTime: string | null;
+  status: string;
 }
 
 export interface ActivityItem {
@@ -63,6 +64,7 @@ export function useDashboard() {
       coachId: coachData?.id,
       coachEmail: coachData?.email,
       coachName: coachData?.name,
+      isAdmin: coachData?.is_admin,
       fullCoachData: coachData
     });
 
@@ -72,34 +74,31 @@ export function useDashboard() {
     }
 
     setLoading(true);
+    const isAdmin = coachData.is_admin === true;
 
     try {
       const today = new Date();
       const sevenDaysFromNow = new Date(today);
       sevenDaysFromNow.setDate(today.getDate() + 7);
-      const startOfWeek = subDays(today, today.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-      // Fetch clients for this coach
-      console.log('2. Fetching clients with coach_id:', coachData.id);
-      const { data: clients, error: clientsError } = await supabase
+      // Fetch clients - for admin show all, for coach filter by coach_id
+      console.log('2. Fetching clients, isAdmin:', isAdmin);
+      let clientsQuery = supabase
         .from('clients')
-        .select('email, name, status, coach_id, last_login_at')
-        .eq('coach_id', coachData.id);
+        .select('email, name, status, coach_id, last_login_at');
+      
+      if (!isAdmin) {
+        clientsQuery = clientsQuery.eq('coach_id', coachData.id);
+      }
+
+      const { data: clients, error: clientsError } = await clientsQuery;
 
       console.log('3. Clients Query Result:', {
-        query: `SELECT email, name, status, coach_id, last_login_at FROM clients WHERE coach_id = '${coachData.id}'`,
+        isAdmin,
         error: clientsError,
         count: clients?.length || 0,
         clients: clients
       });
-
-      // Also fetch ALL clients to compare
-      const { data: allClients } = await supabase
-        .from('clients')
-        .select('email, name, status, coach_id');
-      console.log('3b. ALL Clients (no filter):', allClients);
 
       const clientEmails = clients?.map(c => c.email) || [];
       const clientMap = new Map(clients?.map(c => [c.email, c.name || c.email]) || []);
@@ -107,40 +106,45 @@ export function useDashboard() {
       console.log('4. Client Emails to filter by:', clientEmails);
 
       // Count active clients and engagements
-      console.log('5. Fetching engagements with coach_id:', coachData.id);
-      const { data: engagements, error: engError } = await supabase
+      console.log('5. Fetching engagements, isAdmin:', isAdmin);
+      let engagementsQuery = supabase
         .from('coaching_engagements')
-        .select('*')
-        .eq('coach_id', coachData.id);
+        .select('*');
+      
+      if (!isAdmin) {
+        engagementsQuery = engagementsQuery.eq('coach_id', coachData.id);
+      }
+
+      const { data: engagements, error: engError } = await engagementsQuery;
 
       console.log('6. Engagements Query Result:', {
-        query: `SELECT * FROM coaching_engagements WHERE coach_id = '${coachData.id}'`,
+        isAdmin,
         error: engError,
         count: engagements?.length || 0,
         engagements: engagements
       });
 
-      // Also fetch ALL engagements to compare
-      const { data: allEngagements } = await supabase
-        .from('coaching_engagements')
-        .select('*');
-      console.log('6b. ALL Engagements (no filter):', allEngagements);
-
       const activeEngagements = engagements?.filter(e => e.status === 'active') || [];
       const activeClientEmails = new Set(activeEngagements.map(e => e.client_email));
       console.log('7. Active Engagements:', { count: activeEngagements.length, clientEmails: Array.from(activeClientEmails) });
 
-      // Fetch sessions this week
-      console.log('8. Fetching sessions for client emails:', clientEmails);
-      const { data: weekSessions, error: sessError } = await supabase
-        .from('session_transcripts')
-        .select('id, client_email, session_date')
-        .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
-        .gte('session_date', format(startOfWeek, 'yyyy-MM-dd'))
-        .lte('session_date', format(endOfWeek, 'yyyy-MM-dd'));
+      // Fetch scheduled sessions this week from scheduled_sessions table
+      console.log('8. Fetching scheduled sessions for next 7 days...');
+      let scheduledQuery = supabase
+        .from('scheduled_sessions')
+        .select('id, client_email, session_date, session_time, status')
+        .gte('session_date', today.toISOString().split('T')[0])
+        .lte('session_date', sevenDaysFromNow.toISOString().split('T')[0])
+        .eq('status', 'scheduled');
+      
+      if (!isAdmin) {
+        scheduledQuery = scheduledQuery.eq('coach_id', coachData.id);
+      }
+
+      const { data: weekSessions, error: sessError } = await scheduledQuery;
 
       console.log('9. Week Sessions Query Result:', {
-        query: `SELECT id, client_email, session_date FROM session_transcripts WHERE client_email IN (${clientEmails.join(', ')}) AND session_date >= '${format(startOfWeek, 'yyyy-MM-dd')}' AND session_date <= '${format(endOfWeek, 'yyyy-MM-dd')}'`,
+        isAdmin,
         error: sessError,
         count: weekSessions?.length || 0,
         sessions: weekSessions
@@ -153,103 +157,115 @@ export function useDashboard() {
       });
       console.log('10. Stats set to:', { activeClients: activeClientEmails.size, activeEngagements: activeEngagements.length, sessionsThisWeek: weekSessions?.length || 0 });
 
-      // Fetch upcoming sessions (next 7 days)
-      console.log('11. Fetching upcoming sessions...');
-      const { data: upcoming, error: upcomingError } = await supabase
-        .from('session_transcripts')
-        .select('id, client_email, session_date, session_number')
-        .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
-        .gte('session_date', format(today, 'yyyy-MM-dd'))
-        .lte('session_date', format(sevenDaysFromNow, 'yyyy-MM-dd'))
+      // Fetch upcoming sessions (next 7 days) from scheduled_sessions table
+      console.log('11. Fetching upcoming sessions from scheduled_sessions...');
+      let upcomingQuery = supabase
+        .from('scheduled_sessions')
+        .select('id, client_email, session_date, session_time, status')
+        .gte('session_date', today.toISOString().split('T')[0])
+        .lte('session_date', sevenDaysFromNow.toISOString().split('T')[0])
+        .eq('status', 'scheduled')
         .order('session_date', { ascending: true })
-        .limit(10);
+        .limit(5);
+      
+      if (!isAdmin) {
+        upcomingQuery = upcomingQuery.eq('coach_id', coachData.id);
+      }
+
+      const { data: upcoming, error: upcomingError } = await upcomingQuery;
 
       console.log('12. Upcoming Sessions Result:', { error: upcomingError, count: upcoming?.length || 0, upcoming });
 
-      setUpcomingSessions(
-        (upcoming || []).map(s => ({
-          id: s.id,
-          clientEmail: s.client_email,
-          clientName: clientMap.get(s.client_email) || s.client_email,
-          sessionDate: s.session_date,
-          sessionNumber: s.session_number,
-        }))
-      );
+      // Map client names for upcoming sessions
+      const upcomingWithNames: UpcomingSession[] = [];
+      for (const session of upcoming || []) {
+        const clientName = clientMap.get(session.client_email);
+        if (clientName) {
+          upcomingWithNames.push({
+            id: session.id,
+            clientEmail: session.client_email,
+            clientName,
+            sessionDate: session.session_date,
+            sessionTime: session.session_time,
+            status: session.status,
+          });
+        } else {
+          // Fetch client name if not in map (for admin viewing other coaches' clients)
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('name, email')
+            .eq('email', session.client_email)
+            .maybeSingle();
+          
+          upcomingWithNames.push({
+            id: session.id,
+            clientEmail: session.client_email,
+            clientName: clientData?.name || session.client_email,
+            sessionDate: session.session_date,
+            sessionTime: session.session_time,
+            status: session.status,
+          });
+        }
+      }
 
-      // Build activity feed from multiple sources
-      const activities: ActivityItem[] = [];
+      setUpcomingSessions(upcomingWithNames);
 
-      // Snapshots
-      console.log('13. Fetching recent snapshots for emails:', clientEmails);
+      // Build activity feed from snapshots and impact_verifications
+      // JOIN through clients table to filter by coach assignment
+      console.log('13. Fetching recent snapshots...');
+      
+      // For snapshots, we need to join with clients to filter by coach
       const { data: recentSnapshots, error: snapError } = await supabase
         .from('snapshots')
-        .select('id, client_email, created_at')
-        .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
+        .select('id, client_email, created_at, overall_zone, goal')
+        .in('client_email', clientEmails.length > 0 ? clientEmails : ['_no_match_'])
         .order('created_at', { ascending: false })
         .limit(10);
 
       console.log('14. Recent Snapshots Result:', { error: snapError, count: recentSnapshots?.length || 0, snapshots: recentSnapshots });
 
-      // Fetch ALL snapshots to compare
-      const { data: allSnapshots } = await supabase
-        .from('snapshots')
-        .select('id, client_email, created_at')
+      // For impact verifications
+      console.log('15. Fetching recent impact verifications...');
+      const { data: recentImpacts, error: impactError } = await supabase
+        .from('impact_verifications')
+        .select('id, client_email, created_at, integrity_line')
+        .in('client_email', clientEmails.length > 0 ? clientEmails : ['_no_match_'])
         .order('created_at', { ascending: false })
-        .limit(20);
-      console.log('14b. ALL Snapshots (no filter):', allSnapshots);
+        .limit(10);
+
+      console.log('16. Recent Impacts Result:', { error: impactError, count: recentImpacts?.length || 0, impacts: recentImpacts });
+
+      // Build combined activity feed
+      const activities: ActivityItem[] = [];
 
       recentSnapshots?.forEach(s => {
+        const zone = s.overall_zone ? ` (${s.overall_zone})` : '';
         activities.push({
           id: `snapshot-${s.id}`,
           type: 'snapshot',
-          description: 'Completed a snapshot',
+          description: `Completed a snapshot${zone}`,
           clientEmail: s.client_email,
           clientName: clientMap.get(s.client_email) || s.client_email,
           timestamp: s.created_at,
         });
       });
 
-      // Impact entries
-      const { data: recentImpacts } = await supabase
-        .from('impact_verifications')
-        .select('id, client_email, created_at')
-        .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
-        .order('created_at', { ascending: false })
-        .limit(10);
-
       recentImpacts?.forEach(i => {
+        const line = i.integrity_line ? `: "${i.integrity_line.substring(0, 30)}${i.integrity_line.length > 30 ? '...' : ''}"` : '';
         activities.push({
           id: `impact-${i.id}`,
           type: 'impact',
-          description: 'Submitted impact verification',
+          description: `Submitted impact verification${line}`,
           clientEmail: i.client_email,
           clientName: clientMap.get(i.client_email) || i.client_email,
           timestamp: i.created_at,
         });
       });
 
-      // Sessions
-      const { data: recentSessions } = await supabase
-        .from('session_transcripts')
-        .select('id, client_email, created_at, session_number')
-        .in('client_email', clientEmails.length > 0 ? clientEmails : [''])
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      recentSessions?.forEach(s => {
-        activities.push({
-          id: `session-${s.id}`,
-          type: 'session',
-          description: `Session ${s.session_number} added`,
-          clientEmail: s.client_email,
-          clientName: clientMap.get(s.client_email) || s.client_email,
-          timestamp: s.created_at,
-        });
-      });
-
       // Sort by timestamp and take top 10
       activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setActivityFeed(activities.slice(0, 10));
+      console.log('17. Activity Feed:', activities.slice(0, 10));
 
       // Clients needing attention
       const attention: AttentionClient[] = [];
