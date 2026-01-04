@@ -203,26 +203,28 @@ export default function PreviewPortalHome() {
               <CardTitle className="text-lg font-serif">Goals</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {goals.slice(0, 4).map((goal: any, idx: number) => (
-                <div key={idx} className="flex items-start gap-3">
-                  <Target className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm">{goal.text || goal}</p>
-                    {goal.fires_elements && (
-                      <div className="flex gap-1 mt-1">
-                        {goal.fires_elements.map((el: string) => {
-                          const config = FIRES_CONFIG[el as keyof typeof FIRES_CONFIG];
-                          if (!config) return null;
-                          const Icon = config.icon;
-                          return (
-                            <Icon key={el} className={cn('h-3.5 w-3.5', config.color)} />
-                          );
-                        })}
-                      </div>
-                    )}
+              {goals.slice(0, 4).map((goal: any, idx: number) => {
+                const goalText = typeof goal === 'string' ? goal : goal.goal || goal.text;
+                const firesLever = goal.fires_lever;
+                return (
+                  <div key={idx} className="flex items-start gap-3">
+                    <Target className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm">{goalText}</p>
+                      {firesLever && (
+                        <div className="flex gap-1 mt-1">
+                          {(() => {
+                            const config = FIRES_CONFIG[firesLever as keyof typeof FIRES_CONFIG];
+                            if (!config) return null;
+                            const Icon = config.icon;
+                            return <Icon className={cn('h-3.5 w-3.5', config.color)} />;
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}
