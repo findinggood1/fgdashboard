@@ -7,20 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, LogIn, KeyRound } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
 import { z } from 'zod';
 
-const loginSchema = z.object({
-  email: z.string().trim().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
+const emailSchema = z.string().trim().email('Please enter a valid email address');
 
 export default function PortalLogin() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [resetSent, setResetSent] = useState(false);
+  const [emailError, setEmailError] = useState<string>();
+  const [linkSent, setLinkSent] = useState(false);
   const { user, userRole, clientData, loading, roleLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -48,42 +44,33 @@ export default function PortalLogin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
+    setEmailError(undefined);
 
-    // Validate inputs
-    const result = loginSchema.safeParse({ email, password });
+    // Validate email
+    const result = emailSchema.safeParse(email);
     if (!result.success) {
-      const fieldErrors: { email?: string; password?: string } = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0] === 'email') fieldErrors.email = err.message;
-        if (err.path[0] === 'password') fieldErrors.password = err.message;
-      });
-      setErrors(fieldErrors);
+      setEmailError(result.error.errors[0]?.message || 'Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        password,
+        options: {
+          emailRedirectTo: window.location.origin + '/portal'
+        }
       });
 
       if (error) {
-        console.error('[PortalLogin] Sign in error:', error);
-        if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password');
-        } else if (error.message.includes('Email not confirmed')) {
-          toast.error('Please check your email and click the confirmation link before signing in.');
-        } else {
-          toast.error(error.message || 'Failed to sign in');
-        }
+        console.error('[PortalLogin] Magic link error:', error);
+        toast.error(error.message || 'Failed to send login link');
         return;
       }
 
-      // Auth state change listener will handle routing
-      toast.success('Signed in successfully!');
+      setLinkSent(true);
+      toast.success('Login link sent to your email!');
     } catch (err) {
       console.error('[PortalLogin] Unexpected error:', err);
       toast.error('Something went wrong. Please try again.');
@@ -92,55 +79,17 @@ export default function PortalLogin() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setErrors({ email: 'Please enter your email address first' });
-      return;
-    }
-
-    const emailResult = z.string().email().safeParse(email);
-    if (!emailResult.success) {
-      setErrors({ email: 'Please enter a valid email address' });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const redirectUrl = `${window.location.origin}/portal/login`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        { redirectTo: redirectUrl }
-      );
-
-      if (error) {
-        console.error('[PortalLogin] Reset password error:', error);
-        toast.error(error.message || 'Failed to send reset email');
-        return;
-      }
-
-      setResetSent(true);
-      toast.success('Password reset email sent!');
-    } catch (err) {
-      console.error('[PortalLogin] Unexpected error:', err);
-      toast.error('Something went wrong. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (resetSent) {
+  if (linkSent) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
         <div className="w-full max-w-md animate-fade-in">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-              <KeyRound className="h-8 w-8 text-primary" />
+              <Mail className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-2xl font-serif font-semibold text-foreground">Check Your Email</h1>
             <p className="text-muted-foreground mt-2">
-              We sent a password reset link to
+              We sent a login link to
             </p>
             <p className="text-foreground font-medium mt-1">{email}</p>
           </div>
@@ -149,15 +98,15 @@ export default function PortalLogin() {
             <CardContent className="pt-6">
               <div className="space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Click the link in your email to reset your password.
+                  Click the link in your email to sign in.
                   The link will expire in 1 hour.
                 </p>
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => setResetSent(false)}
+                  onClick={() => setLinkSent(false)}
                 >
-                  Back to Sign In
+                  Send Another Link
                 </Button>
               </div>
             </CardContent>
@@ -184,7 +133,7 @@ export default function PortalLogin() {
           <CardHeader className="text-center">
             <CardTitle className="text-xl font-serif">Welcome Back</CardTitle>
             <CardDescription>
-              Enter your email and password to sign in
+              Enter your email to receive a login link
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -198,47 +147,16 @@ export default function PortalLogin() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                    if (emailError) setEmailError(undefined);
                   }}
                   disabled={isLoading}
-                  className={`h-11 ${errors.email ? 'border-destructive' : ''}`}
+                  className={`h-11 ${emailError ? 'border-destructive' : ''}`}
                   autoComplete="email"
                   autoFocus
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                {emailError && (
+                  <p className="text-sm text-destructive">{emailError}</p>
                 )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
-                  }}
-                  disabled={isLoading}
-                  className={`h-11 ${errors.password ? 'border-destructive' : ''}`}
-                  autoComplete="current-password"
-                />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  disabled={isLoading}
-                  className="text-sm text-primary hover:underline disabled:opacity-50"
-                >
-                  Forgot Password?
-                </button>
               </div>
 
               <Button
@@ -249,12 +167,12 @@ export default function PortalLogin() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Sending...
                   </>
                 ) : (
                   <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Sign In
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Login Link
                   </>
                 )}
               </Button>
