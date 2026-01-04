@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -16,11 +16,11 @@ interface Message {
   timestamp: Date;
 }
 
-const STARTER_PROMPTS = [
-  "What should I focus on this week?",
-  "Help me reflect on my progress",
-  "Explain the FIRES framework",
-  "What are my strengths?",
+const QUICK_PROMPTS = [
+  "Summarize my progress",
+  "What should I focus on?",
+  "Remind me of my goals",
+  "What's my zone mean?",
 ];
 
 export default function PortalChat() {
@@ -40,6 +40,11 @@ export default function PortalChat() {
     }
   }, [messages]);
 
+  const clearChat = () => {
+    setMessages([]);
+    toast.success('Chat cleared');
+  };
+
   const sendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
 
@@ -55,13 +60,13 @@ export default function PortalChat() {
     setIsLoading(true);
 
     try {
-      // Call coaching-chat edge function
+      // Call coaching-chat edge function with client mode
       const { data, error } = await supabase.functions.invoke('coaching-chat', {
         body: {
           message: content,
           clientEmail: clientData?.email,
-          context: 'client_portal',
-          history: messages.slice(-10).map(m => ({
+          mode: 'client', // Client portal mode - uses client-focused prompt
+          conversationHistory: messages.slice(-10).map(m => ({
             role: m.role,
             content: m.content,
           })),
@@ -110,13 +115,26 @@ export default function PortalChat() {
 
   return (
     <div className="h-[calc(100vh-12rem)] flex flex-col animate-fade-in">
-      <div className="mb-6">
-        <h1 className="text-3xl font-serif font-semibold text-foreground">
-          Chat
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Your AI coaching assistant
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-serif font-semibold text-foreground">
+            Chat
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Your AI coaching companion
+          </p>
+        </div>
+        {messages.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearChat}
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear Chat
+          </Button>
+        )}
       </div>
 
       <Card className="flex-1 flex flex-col overflow-hidden">
@@ -130,10 +148,10 @@ export default function PortalChat() {
                 Hi {firstName}! How can I help today?
               </h2>
               <p className="text-muted-foreground text-sm max-w-md mb-6">
-                I'm here to support your coaching journey. Ask me about your progress, the FIRES framework, or anything else on your mind.
+                I'm here to support your coaching journey. Ask me about your progress, the FIRES framework, your goals, or anything else on your mind.
               </p>
               <div className="flex flex-wrap gap-2 justify-center max-w-lg">
-                {STARTER_PROMPTS.map((prompt) => (
+                {QUICK_PROMPTS.map((prompt) => (
                   <Button
                     key={prompt}
                     variant="outline"
