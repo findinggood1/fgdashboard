@@ -141,17 +141,37 @@ export default function PreviewPortalHome() {
         )}
       </section>
 
-      {/* Section 2: The Story */}
-      <section>
-        <h2 className="text-xl font-serif font-medium text-foreground mb-4">
-          The Story We're Strengthening
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StoryCard title="Present" content={engagement?.story_present} placeholder="To be discovered..." />
-          <StoryCard title="Past" content={engagement?.story_past} placeholder="To be discovered..." />
-          <StoryCard title="Potential" content={engagement?.story_potential} placeholder="To be discovered..." />
-        </div>
-      </section>
+      {/* Section 2: This Week's Actions */}
+      {engagement?.weekly_actions && engagement.weekly_actions.length > 0 && (
+        <section>
+          <h2 className="text-xl font-serif font-medium text-foreground mb-4">
+            This Week's Actions
+          </h2>
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              {engagement.weekly_actions.map((action: any, idx: number) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <div className={cn(
+                    "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5",
+                    action.status === 'completed' 
+                      ? "bg-primary border-primary" 
+                      : "border-muted-foreground/30"
+                  )}>
+                    {action.status === 'completed' && (
+                      <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={action.status === 'completed' ? 'line-through text-muted-foreground' : ''}>
+                    {action.action}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* Section 3: Current Focus */}
       {firesFocus.length > 0 && (
@@ -178,22 +198,6 @@ export default function PreviewPortalHome() {
                   );
                 })}
               </div>
-              {engagement?.weekly_actions && engagement.weekly_actions.length > 0 && (
-                <div className="mt-6 space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground">This Week's Actions</h3>
-                  <ul className="space-y-2">
-                    {engagement.weekly_actions
-                      .filter((a: any) => a.status === 'active')
-                      .slice(0, 3)
-                      .map((action: any, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <Target className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                          <span>{action.action}</span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
             </CardContent>
           </Card>
         </section>
