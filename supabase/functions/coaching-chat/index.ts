@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SYSTEM_PROMPT = `You are a coaching prep assistant for Finding Good, supporting the Narrative Integrity coaching framework.
+const COACH_SYSTEM_PROMPT = `You are a coaching prep assistant for Finding Good, supporting the Narrative Integrity coaching framework.
 
 THE FRAMEWORK:
 Narrative Integrity = the ability to clarify, act on, and communicate the most honest version of your story, and help others do the same.
@@ -47,13 +47,51 @@ When analyzing client data:
 The coach is preparing for a real session. Be direct and practical.
 If no client is selected, help with general coaching questions.`
 
+const CLIENT_SYSTEM_PROMPT = `You are a supportive AI companion for Finding Good coaching clients. Your role is to help clients reflect on and understand their coaching journey.
+
+YOUR APPROACH:
+- Be warm, encouraging, and supportive
+- Ask reflective questions rather than giving direct advice
+- Reference the client's specific data (goals, snapshots, progress) when relevant
+- Help them see patterns and connections in their journey
+- Celebrate their progress and growth
+
+THE FIRES FRAMEWORK (help them understand):
+- Feelings: Emotional awareness and how they process experiences
+- Influence: Sense of agency and control over their life
+- Resilience: How they grow through challenges
+- Ethics: Alignment with their values and purpose
+- Strengths: Confidence in their capabilities
+
+THE FOUR ZONES (explain when asked):
+- Exploring (Low confidence, Low alignment): A time for curiosity and trying new directions
+- Discovering (Low confidence, High alignment): Reconnecting with past wins and strengths
+- Performing (High confidence, Low alignment): Returning to core identity and values
+- Owning (High confidence, High alignment): Leading and extending influence to others
+
+THE THREE PHASES:
+- NAME (weeks 1-4): Seeing the story clearly
+- VALIDATE (weeks 5-8): Acting on it with confidence
+- COMMUNICATE (weeks 9-12): Sharing it and helping others
+
+IMPORTANT GUIDELINES:
+- You are NOT their coach - you support reflection between sessions
+- Encourage them to bring insights to their next coaching session
+- Don't give prescriptive advice; ask questions that help them discover answers
+- Reference their specific goals, markers, and progress when available
+- If they're struggling, acknowledge it and remind them their coach is there to help
+
+If you don't have much context about their journey, acknowledge this warmly and offer to explain the FIRES framework or what to expect from coaching.`
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { clientEmail, message, conversationHistory = [] } = await req.json()
+    const { clientEmail, message, conversationHistory = [], mode = 'coach' } = await req.json()
+    
+    console.log(`Chat request - mode: ${mode}, clientEmail: ${clientEmail}`)
 
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')
     if (!ANTHROPIC_API_KEY) {
@@ -65,31 +103,57 @@ serve(async (req) => {
     }
 
     let clientContext = ''
+    const isClientMode = mode === 'client'
     
-    // If client selected, fetch their data
+    // Fetch client data
     if (clientEmail) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       const supabase = createClient(supabaseUrl, supabaseKey)
 
-      const [clientRes, engagementRes, markersRes, snapshotsRes, impactsRes, notesRes] = await Promise.all([
-        supabase.from('clients').select('*').eq('email', clientEmail).single(),
-        supabase.from('coaching_engagements').select('*').eq('client_email', clientEmail).eq('status', 'active').single(),
-        supabase.from('more_less_markers').select('*').eq('client_email', clientEmail).eq('is_active', true),
-        supabase.from('snapshots').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(3),
-        supabase.from('impact_verifications').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10),
-        supabase.from('coaching_notes').select('*').eq('client_email', clientEmail).order('note_date', { ascending: false }).limit(5)
-      ])
+      if (isClientMode) {
+        // Client mode: fetch only client-visible data (no coach notes/observations)
+        const [clientRes, engagementRes, markersRes, snapshotsRes, impactsRes, sessionsRes] = await Promise.all([
+          supabase.from('clients').select('name, email').eq('email', clientEmail).single(),
+          supabase.from('coaching_engagements').select('*').eq('client_email', clientEmail).eq('status', 'active').single(),
+          supabase.from('more_less_markers').select('*').eq('client_email', clientEmail).eq('is_active', true),
+          supabase.from('snapshots').select('id, created_at, overall_zone, goal, growth_opportunity_category, total_confidence, total_alignment, zone_breakdown').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(5),
+          supabase.from('impact_verifications').select('id, created_at, type, responses, integrity_line, fires_focus').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10),
+          supabase.from('session_transcripts').select('id, created_at, session_number, summary, key_themes, action_items').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(5)
+        ])
 
-      clientContext = buildClientContext(
-        clientRes.data,
-        engagementRes.data,
-        markersRes.data || [],
-        snapshotsRes.data || [],
-        impactsRes.data || [],
-        notesRes.data || []
-      )
+        clientContext = buildClientPortalContext(
+          clientRes.data,
+          engagementRes.data,
+          markersRes.data || [],
+          snapshotsRes.data || [],
+          impactsRes.data || [],
+          sessionsRes.data || []
+        )
+      } else {
+        // Coach mode: fetch all data including coach notes
+        const [clientRes, engagementRes, markersRes, snapshotsRes, impactsRes, notesRes] = await Promise.all([
+          supabase.from('clients').select('*').eq('email', clientEmail).single(),
+          supabase.from('coaching_engagements').select('*').eq('client_email', clientEmail).eq('status', 'active').single(),
+          supabase.from('more_less_markers').select('*').eq('client_email', clientEmail).eq('is_active', true),
+          supabase.from('snapshots').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(3),
+          supabase.from('impact_verifications').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10),
+          supabase.from('coaching_notes').select('*').eq('client_email', clientEmail).order('note_date', { ascending: false }).limit(5)
+        ])
+
+        clientContext = buildCoachContext(
+          clientRes.data,
+          engagementRes.data,
+          markersRes.data || [],
+          snapshotsRes.data || [],
+          impactsRes.data || [],
+          notesRes.data || []
+        )
+      }
     }
+
+    // Select appropriate system prompt
+    const systemPrompt = isClientMode ? CLIENT_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT
 
     // Build messages array for Claude
     const messages = [
@@ -100,10 +164,12 @@ serve(async (req) => {
       {
         role: 'user',
         content: clientContext 
-          ? `${message}\n\n---\nCLIENT CONTEXT:\n${clientContext}`
+          ? `${message}\n\n---\nYOUR JOURNEY DATA:\n${clientContext}`
           : message
       }
     ]
+
+    console.log(`Calling Claude API with ${messages.length} messages, context length: ${clientContext.length}`)
 
     // Call Claude API directly
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -116,7 +182,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: messages
       })
     })
@@ -130,6 +196,8 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('Claude response received successfully')
 
     return new Response(
       JSON.stringify({ response: data.content[0].text }),
@@ -146,7 +214,8 @@ serve(async (req) => {
   }
 })
 
-function buildClientContext(client: any, engagement: any, markers: any[], snapshots: any[], impacts: any[], notes: any[]): string {
+// Context builder for COACH mode (includes coach notes)
+function buildCoachContext(client: any, engagement: any, markers: any[], snapshots: any[], impacts: any[], notes: any[]): string {
   const lines: string[] = []
   
   lines.push(`CLIENT: ${client?.name || client?.email || 'Unknown'}`)
@@ -209,6 +278,115 @@ function buildClientContext(client: any, engagement: any, markers: any[], snapsh
     lines.push('=== COACH NOTES ===')
     notes.forEach((n: any) => {
       lines.push(`${n.note_date}: ${n.content}`)
+    })
+  }
+  
+  return lines.join('\n')
+}
+
+// Context builder for CLIENT mode (NO coach-private data)
+function buildClientPortalContext(client: any, engagement: any, markers: any[], snapshots: any[], impacts: any[], sessions: any[]): string {
+  const lines: string[] = []
+  
+  const firstName = client?.name?.split(' ')[0] || 'there'
+  lines.push(`Hello ${firstName}!`)
+  lines.push('')
+  
+  if (engagement) {
+    const focusLabels: Record<string, string> = {
+      career: 'Career',
+      relationships: 'Relationships',
+      health: 'Health & Wellness',
+      leadership: 'Leadership',
+      sales: 'Sales',
+      entrepreneurship: 'Entrepreneurship',
+      transition: 'Life Transition',
+    };
+    
+    lines.push('=== YOUR COACHING JOURNEY ===')
+    lines.push(`Phase: ${engagement.current_phase?.toUpperCase()} - Week ${engagement.current_week} of 12`)
+    if (engagement.focus) lines.push(`Focus Area: ${focusLabels[engagement.focus] || engagement.focus}`)
+    
+    // Three Stories (3Ps)
+    if (engagement.story_present || engagement.story_past || engagement.story_potential) {
+      lines.push('')
+      lines.push('Your Three Stories:')
+      if (engagement.story_present) lines.push(`  Present: ${engagement.story_present}`)
+      if (engagement.story_past) lines.push(`  Past: ${engagement.story_past}`)
+      if (engagement.story_potential) lines.push(`  Potential: ${engagement.story_potential}`)
+    }
+    
+    // Goals
+    if (engagement.goals?.length) {
+      lines.push('')
+      lines.push('Your Goals:')
+      engagement.goals.forEach((g: any) => lines.push(`  • ${g.goal} (${g.fires_lever})`))
+    }
+    
+    // Challenges
+    if (engagement.challenges?.length) {
+      lines.push('')
+      lines.push('Your Challenges:')
+      engagement.challenges.forEach((c: any) => lines.push(`  • ${c.challenge}`))
+    }
+    lines.push('')
+  }
+  
+  if (markers.length) {
+    lines.push('=== YOUR MORE/LESS MARKERS ===')
+    markers.forEach((m: any) => {
+      const progress = m.current_score - m.baseline_score
+      const progressStr = progress > 0 ? `+${progress}` : progress.toString()
+      lines.push(`${m.marker_type.toUpperCase()}: "${m.marker_text}"`)
+      lines.push(`  Progress: ${m.baseline_score} → ${m.current_score} (${progressStr}) | Target: ${m.target_score}`)
+    })
+    lines.push('')
+  }
+  
+  if (snapshots.length) {
+    lines.push('=== YOUR RECENT SNAPSHOTS ===')
+    snapshots.forEach((s: any) => {
+      const date = new Date(s.created_at).toLocaleDateString()
+      lines.push(`${date}:`)
+      lines.push(`  Zone: ${s.overall_zone}`)
+      if (s.goal) lines.push(`  Goal: ${s.goal}`)
+      if (s.growth_opportunity_category) lines.push(`  Growth Area: ${s.growth_opportunity_category}`)
+      if (s.total_confidence) lines.push(`  Confidence: ${s.total_confidence}/50`)
+      if (s.total_alignment) lines.push(`  Alignment: ${s.total_alignment}/50`)
+      if (s.zone_breakdown) {
+        lines.push(`  FIRES Zones: F=${s.zone_breakdown.feelings || 'N/A'}, I=${s.zone_breakdown.influence || 'N/A'}, R=${s.zone_breakdown.resilience || 'N/A'}, E=${s.zone_breakdown.ethics || 'N/A'}, S=${s.zone_breakdown.strengths || 'N/A'}`)
+      }
+    })
+    lines.push('')
+  }
+  
+  if (impacts.length) {
+    lines.push('=== YOUR RECENT DAILY IMPACTS ===')
+    impacts.slice(0, 5).forEach((i: any) => {
+      const date = new Date(i.created_at).toLocaleDateString()
+      lines.push(`${date} (${i.type || 'Self'}):`)
+      if (i.responses?.what_did) lines.push(`  What you did: ${i.responses.what_did}`)
+      if (i.responses?.how_feel) lines.push(`  How you felt: ${i.responses.how_feel}`)
+      if (i.integrity_line) lines.push(`  Your integrity line: "${i.integrity_line}"`)
+      if (i.fires_focus) lines.push(`  FIRES focus: ${i.fires_focus}`)
+    })
+    lines.push('')
+  }
+  
+  if (sessions.length) {
+    lines.push('=== YOUR SESSION SUMMARIES ===')
+    sessions.forEach((s: any) => {
+      const date = new Date(s.created_at).toLocaleDateString()
+      lines.push(`Session ${s.session_number || '?'} (${date}):`)
+      if (s.summary) lines.push(`  Summary: ${s.summary}`)
+      if (s.key_themes?.length) lines.push(`  Themes: ${s.key_themes.join(', ')}`)
+      if (s.action_items?.length) {
+        lines.push(`  Action Items:`)
+        s.action_items.forEach((a: any) => {
+          const status = a.completed ? '✓' : '○'
+          lines.push(`    ${status} ${a.item}`)
+        })
+      }
     })
   }
   
