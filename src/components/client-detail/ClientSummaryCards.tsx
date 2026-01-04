@@ -1,16 +1,18 @@
 import { formatDistanceToNow, format } from 'date-fns';
-import { Snapshot } from '@/hooks/useClientDetail';
+import { Snapshot, ScheduledSession } from '@/hooks/useClientDetail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ZoneBadge } from '@/components/clients/ZoneBadge';
-import { Target, TrendingUp, Award, Clock } from 'lucide-react';
+import { Target, TrendingUp, Award, CalendarClock, Clock } from 'lucide-react';
 
 interface ClientSummaryCardsProps {
   latestSnapshot: Snapshot | null;
   lastActivity: { date: string; type: string } | null;
+  nextScheduledSession: ScheduledSession | null;
 }
 
-export function ClientSummaryCards({ latestSnapshot, lastActivity }: ClientSummaryCardsProps) {
+export function ClientSummaryCards({ latestSnapshot, lastActivity, nextScheduledSession }: ClientSummaryCardsProps) {
   const formatDate = (date: string) => format(new Date(date), 'MMM d, yyyy');
+  const formatDateTime = (date: string) => format(new Date(date), 'MMM d @ h:mm a');
 
   // Get zone breakdown to find owning highlight
   const getOwningHighlight = () => {
@@ -94,26 +96,34 @@ export function ClientSummaryCards({ latestSnapshot, lastActivity }: ClientSumma
         </CardContent>
       </Card>
 
-      {/* Last Active */}
+      {/* Next Meeting */}
       <Card className="shadow-soft">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Last Active
+            Next Meeting
           </CardTitle>
-          <Clock className="h-4 w-4 text-primary" />
+          <CalendarClock className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          {lastActivity ? (
+          {nextScheduledSession ? (
             <>
               <div className="text-lg font-semibold">
-                {formatDistanceToNow(new Date(lastActivity.date), { addSuffix: true })}
+                {formatDateTime(nextScheduledSession.session_date)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1 capitalize">
-                {lastActivity.type}
+              <p className="text-xs text-muted-foreground mt-1 capitalize flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {nextScheduledSession.session_type || 'Coaching'} session
               </p>
             </>
           ) : (
-            <div className="text-muted-foreground">No activity yet</div>
+            <>
+              <div className="text-muted-foreground">No sessions scheduled</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lastActivity && (
+                  <span>Last active {formatDistanceToNow(new Date(lastActivity.date), { addSuffix: true })}</span>
+                )}
+              </p>
+            </>
           )}
         </CardContent>
       </Card>
