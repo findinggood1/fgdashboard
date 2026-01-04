@@ -61,7 +61,13 @@ serve(async (req) => {
   }
 
   try {
-    const { clientEmail, engagementId, regenerateAll = false } = await req.json()
+    const { clientEmail, engagementId, regenerateAll = false, dataFrom, dataTo } = await req.json()
+
+    // Default to last 7 days if not specified
+    const fromDate = dataFrom || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const toDate = dataTo || new Date().toISOString()
+
+    console.log(`Generating narrative map for ${clientEmail} from ${fromDate} to ${toDate}`)
 
     if (!clientEmail) {
       return new Response(
@@ -79,7 +85,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Fetch all client data
+    // Fetch all client data with date range filtering
     const [
       clientRes,
       engagementRes,
@@ -97,14 +103,19 @@ serve(async (req) => {
         ? supabase.from('coaching_engagements').select('*').eq('id', engagementId).single()
         : supabase.from('coaching_engagements').select('*').eq('client_email', clientEmail).eq('status', 'active').single(),
       supabase.from('more_less_markers').select('*').eq('client_email', clientEmail).eq('is_active', true),
-      supabase.from('snapshots').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(5),
-      supabase.from('impact_verifications').select('*').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(20),
-      supabase.from('session_transcripts').select('*').eq('client_email', clientEmail).order('session_date', { ascending: false }).limit(5),
-      supabase.from('coaching_notes').select('*').eq('client_email', clientEmail).order('note_date', { ascending: false }).limit(10),
+      // Snapshots in date range
+      supabase.from('snapshots').select('*').eq('client_email', clientEmail).gte('created_at', fromDate).lte('created_at', toDate).order('created_at', { ascending: false }).limit(10),
+      // Impact verifications in date range
+      supabase.from('impact_verifications').select('*').eq('client_email', clientEmail).gte('created_at', fromDate).lte('created_at', toDate).order('created_at', { ascending: false }).limit(30),
+      // Session transcripts in date range
+      supabase.from('session_transcripts').select('*').eq('client_email', clientEmail).gte('created_at', fromDate).lte('created_at', toDate).order('created_at', { ascending: false }).limit(10),
+      // Coaching notes in date range
+      supabase.from('coaching_notes').select('*').eq('client_email', clientEmail).gte('created_at', fromDate).lte('created_at', toDate).order('created_at', { ascending: false }).limit(20),
       supabase.from('zone_defaults').select('*'),
-      // New data sources
-      supabase.from('voice_memos').select('id, title, transcription, created_at').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10),
-      supabase.from('client_files').select('id, file_name, file_type, description, created_at').eq('client_email', clientEmail).order('created_at', { ascending: false }).limit(10)
+      // Voice memos in date range
+      supabase.from('voice_memos').select('id, title, transcription, created_at').eq('client_email', clientEmail).gte('created_at', fromDate).lte('created_at', toDate).order('created_at', { ascending: false }).limit(10),
+      // Client files in date range
+      supabase.from('client_files').select('id, file_name, file_type, description, created_at').eq('client_email', clientEmail).gte('created_at', fromDate).lte('created_at', toDate).order('created_at', { ascending: false }).limit(10)
     ])
 
     const client = clientRes.data
@@ -118,7 +129,7 @@ serve(async (req) => {
     const voiceMemos = voiceMemosRes.data || []
     const clientFiles = clientFilesRes.data || []
 
-    // Fetch marker updates for this client's markers (requires marker IDs first)
+    // Fetch marker updates for this client's markers in date range
     let markerUpdates: any[] = []
     if (markers.length > 0) {
       const markerIds = markers.map((m: any) => m.id)
@@ -126,8 +137,10 @@ serve(async (req) => {
         .from('more_less_updates')
         .select('*')
         .in('marker_id', markerIds)
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate)
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(30)
       markerUpdates = updatesData || []
     }
 
@@ -300,6 +313,10 @@ IMPORTANT:
         success: true,
         engagement_id: engagement.id,
         insights: updatePayload,
+        date_range: {
+          from: fromDate,
+          to: toDate
+        },
         message: 'Narrative Integrity Map generated successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
