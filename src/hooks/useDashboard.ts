@@ -85,7 +85,7 @@ export function useDashboard() {
       console.log('2. Fetching clients, isAdmin:', isAdmin);
       let clientsQuery = supabase
         .from('clients')
-        .select('email, name, status, coach_id, last_login_at');
+        .select('id, email, name, coach_id, created_at');
       
       if (!isAdmin) {
         clientsQuery = clientsQuery.eq('coach_id', coachData.id);
@@ -410,19 +410,11 @@ export function useDashboard() {
       
       setAnalytics(analyticsResult);
 
-      // Calculate portal login stats
-      const approvedClients = clients?.filter(c => c.status === 'approved') || [];
-      const clientsWithLogins = approvedClients.filter(c => c.last_login_at);
-      const sortedByLogin = [...clientsWithLogins].sort(
-        (a, b) => new Date(b.last_login_at!).getTime() - new Date(a.last_login_at!).getTime()
-      );
-      
+      // Portal login stats - columns don't exist yet, set placeholder
       const loginStats: PortalLoginStats = {
-        clientsLoggedIn: clientsWithLogins.length,
-        totalClients: approvedClients.length,
-        lastLogin: sortedByLogin[0] 
-          ? { name: sortedByLogin[0].name || sortedByLogin[0].email, timestamp: sortedByLogin[0].last_login_at! }
-          : null,
+        clientsLoggedIn: 0,
+        totalClients: clients?.length || 0,
+        lastLogin: null,
       };
       
       console.log('22. Portal Login Stats:', loginStats);
