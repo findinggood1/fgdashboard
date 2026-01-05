@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   // Prevent stale role checks from overwriting newer results
   const roleCheckIdRef = useRef(0);
+  // Track if user has manually selected a view (prevents role re-checks from overwriting)
+  const userSelectedViewRef = useRef(false);
 
   const determineUserRole = async (email: string) => {
     const checkId = ++roleCheckIdRef.current;
@@ -155,7 +157,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('[Auth] Roles determined:', roles, 'Primary:', primaryRole, 'DefaultView:', defaultView);
       setUserRole(primaryRole);
-      setActiveView(defaultView);
+      
+      // Only set activeView if user hasn't manually selected one
+      if (!userSelectedViewRef.current) {
+        console.log('[Auth] Setting activeView to default:', defaultView);
+        setActiveView(defaultView);
+      } else {
+        console.log('[Auth] User manually selected view, keeping current activeView');
+      }
 
     } catch (error) {
       console.error('[Auth] determineUserRole exception:', error);
@@ -176,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const switchView = (view: 'admin' | 'coach' | 'client') => {
     console.log('[Auth] Switching view to:', view);
+    userSelectedViewRef.current = true; // Mark that user manually selected a view
     setActiveView(view);
   };
 
