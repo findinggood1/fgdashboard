@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoleLoading(true);
     
     try {
-      const roles: UserRoles = { isAdmin: false, isCoach: false, isClient: false };
+      const roles: UserRoles = { isAdmin: false, isCoach: false, isClient: true };
       let foundCoachData: Coach | null = null;
       let foundClientData: Client | null = null;
 

@@ -6,12 +6,15 @@ import { Home, Map, MessageCircle, LogOut, Loader2, Compass } from 'lucide-react
 import { cn } from '@/lib/utils';
 
 export default function PortalLayout() {
-  const { user, loading, roleLoading, userRole, clientData, signOut } = useAuth();
+  const { user, loading, roleLoading, userRole, activeView, clientData, signOut } = useAuth();
+  const effectiveView = activeView ?? userRole;
 
   console.log('[PortalLayout] State:', { 
     loading, 
     roleLoading, 
-    userRole, 
+    userRole,
+    activeView,
+    effectiveView,
     hasUser: !!user,
     clientStatus: clientData?.status 
   });
@@ -30,21 +33,23 @@ export default function PortalLayout() {
     return <Navigate to="/portal/login" replace />;
   }
 
-  // If user is a coach or admin, redirect them to dashboard (not "no account")
-  if (userRole === 'admin' || userRole === 'coach') {
-    console.log('[PortalLayout] User is coach/admin, redirecting to /dashboard');
-    return <Navigate to="/dashboard" replace />;
+  // Respect the selected view (activeView). If user is viewing admin/coach, redirect out of portal.
+  if (effectiveView === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+  if (effectiveView === 'coach') {
+    return <Navigate to="/clients" replace />;
   }
 
-  // If userRole is null or not 'client', redirect to no-account
-  if (userRole !== 'client') {
-    console.log('[PortalLayout] userRole is not client:', userRole, ', redirecting to /no-account');
+  // If user isn't in client view, show no-account (should be rare)
+  if (effectiveView !== 'client') {
+    console.log('[PortalLayout] effectiveView is not client:', effectiveView, ', redirecting to /no-account');
     return <Navigate to="/no-account" replace />;
   }
 
-  // User is a client but we don't have their data yet
+  // User is in client view but we don't have their data yet
   if (!clientData) {
-    console.log('[PortalLayout] Client role but no clientData, redirecting to /no-account');
+    console.log('[PortalLayout] Client view but no clientData, redirecting to /no-account');
     return <Navigate to="/no-account" replace />;
   }
 

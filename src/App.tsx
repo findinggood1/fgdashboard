@@ -54,6 +54,7 @@ const App = () => (
             {/* Coach/Admin Protected Routes */}
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/admin" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/clients/:email" element={<ClientDetail />} />
               <Route path="/engagements/:id" element={<EngagementDetail />} />
