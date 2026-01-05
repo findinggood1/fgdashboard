@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -31,13 +31,20 @@ const viewConfig = {
 export function RoleSwitcher() {
   const { userRoles, activeView, switchView } = useAuth();
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
+  // Derive current view from URL for accurate highlighting
+  const currentViewFromRoute = (): 'admin' | 'coach' | 'client' => {
+    if (location.pathname.startsWith('/portal')) return 'client';
+    if (location.pathname.startsWith('/admin')) return 'admin';
+    return 'coach'; // /clients, /dashboard, /chat, etc.
+  };
 
   // Count available roles
   const availableRoles = [
     userRoles.isAdmin && 'admin',
     userRoles.isCoach && 'coach',
-    'client',
+    'client', // Everyone can be a client
   ].filter(Boolean) as ('admin' | 'coach' | 'client')[];
 
   // Don't show switcher if user has only one role
@@ -45,19 +52,19 @@ export function RoleSwitcher() {
     return null;
   }
 
-  const currentView = activeView || 'client';
-  const currentConfig = viewConfig[currentView];
+  const displayView = currentViewFromRoute();
+  const currentConfig = viewConfig[displayView];
   const CurrentIcon = currentConfig.icon;
 
   const handleSwitch = (view: 'admin' | 'coach' | 'client') => {
-    console.log('[RoleSwitcher] Switching to view:', view, 'from:', activeView);
-    if (view === activeView) {
+    console.log('[RoleSwitcher] handleSwitch called, view:', view, 'current activeView:', activeView);
+    if (view === displayView) {
       console.log('[RoleSwitcher] Already on this view, skipping');
       return;
     }
     
     const targetPath = viewConfig[view].path;
-    console.log('[RoleSwitcher] Navigating to:', targetPath);
+    console.log('[RoleSwitcher] Switching view and navigating to:', targetPath);
     switchView(view);
     navigate(targetPath);
   };
@@ -75,16 +82,20 @@ export function RoleSwitcher() {
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
         {availableRoles.map((role) => {
           const config = viewConfig[role];
           const Icon = config.icon;
-          const isActive = role === activeView;
+          const isActive = role === displayView;
           
           return (
             <DropdownMenuItem
               key={role}
-              onClick={() => handleSwitch(role)}
+              onSelect={(e) => {
+                e.preventDefault();
+                console.log('[RoleSwitcher] onSelect fired for role:', role);
+                handleSwitch(role);
+              }}
               className={cn(
                 'flex items-center gap-2 cursor-pointer',
                 isActive && 'bg-primary/10'
