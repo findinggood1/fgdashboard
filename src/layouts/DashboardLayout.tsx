@@ -11,7 +11,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function DashboardLayout() {
-  const { user, loading, roleLoading, userRole } = useAuth();
+  const { user, loading, roleLoading, userRole, activeView } = useAuth();
+  const effectiveView = activeView ?? userRole;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -20,7 +21,9 @@ export default function DashboardLayout() {
   console.log('[DashboardLayout] State:', { 
     loading, 
     roleLoading, 
-    userRole, 
+    userRole,
+    activeView,
+    effectiveView,
     hasUser: !!user 
   });
 
@@ -46,9 +49,9 @@ export default function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  // If user is a client, redirect them to portal
-  if (userRole === 'client') {
-    console.log('[DashboardLayout] User is client, redirecting to /portal');
+  // Respect the selected view (activeView). If user is viewing client, redirect out of dashboard.
+  if (effectiveView === 'client') {
+    console.log('[DashboardLayout] effectiveView is client, redirecting to /portal');
     return <Navigate to="/portal" replace />;
   }
 

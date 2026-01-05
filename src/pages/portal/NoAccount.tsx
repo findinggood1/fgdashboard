@@ -6,19 +6,25 @@ import { Card, CardContent } from '@/components/ui/card';
 import { UserX, LogOut, Loader2 } from 'lucide-react';
 
 export default function NoAccount() {
-  const { user, signOut, userRole, clientData, loading, roleLoading } = useAuth();
+  const { user, signOut, userRole, activeView, clientData, loading, roleLoading } = useAuth();
   const navigate = useNavigate();
+  const effectiveView = activeView ?? userRole;
 
-  // Self-healing: redirect if role becomes known after landing here
+  // Self-healing: redirect if view/role becomes known after landing here
   useEffect(() => {
     if (loading || roleLoading) return;
 
-    if (userRole === 'admin' || userRole === 'coach') {
-      navigate('/dashboard', { replace: true });
+    if (effectiveView === 'admin') {
+      navigate('/admin', { replace: true });
       return;
     }
 
-    if (userRole === 'client' && clientData) {
+    if (effectiveView === 'coach') {
+      navigate('/clients', { replace: true });
+      return;
+    }
+
+    if (effectiveView === 'client' && clientData) {
       if (clientData.status === 'approved') {
         navigate('/portal', { replace: true });
       } else if (clientData.status === 'pending') {
@@ -27,7 +33,7 @@ export default function NoAccount() {
         navigate('/access-revoked', { replace: true });
       }
     }
-  }, [loading, roleLoading, userRole, clientData, navigate]);
+  }, [loading, roleLoading, effectiveView, clientData, navigate]);
 
   // Show loading while role is being determined
   if (loading || roleLoading) {

@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ const viewConfig = {
   admin: {
     label: 'Admin View',
     icon: Shield,
-    path: '/dashboard',
+    path: '/admin',
   },
   coach: {
     label: 'Coach View',
@@ -29,15 +29,15 @@ const viewConfig = {
 } as const;
 
 export function RoleSwitcher() {
-  const { userRoles, activeView, switchView, clientData } = useAuth();
+  const { userRoles, activeView, switchView } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  
 
   // Count available roles
   const availableRoles = [
     userRoles.isAdmin && 'admin',
     userRoles.isCoach && 'coach',
-    userRoles.isClient && clientData?.status === 'approved' && 'client',
+    'client',
   ].filter(Boolean) as ('admin' | 'coach' | 'client')[];
 
   // Don't show switcher if user has only one role
