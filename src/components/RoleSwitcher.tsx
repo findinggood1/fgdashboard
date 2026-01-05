@@ -50,10 +50,16 @@ export function RoleSwitcher() {
   const CurrentIcon = currentConfig.icon;
 
   const handleSwitch = (view: 'admin' | 'coach' | 'client') => {
-    if (view === activeView) return;
+    console.log('[RoleSwitcher] Switching to view:', view, 'from:', activeView);
+    if (view === activeView) {
+      console.log('[RoleSwitcher] Already on this view, skipping');
+      return;
+    }
     
+    const targetPath = viewConfig[view].path;
+    console.log('[RoleSwitcher] Navigating to:', targetPath);
     switchView(view);
-    navigate(viewConfig[view].path, { replace: true });
+    navigate(targetPath);
   };
 
   return (
