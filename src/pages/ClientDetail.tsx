@@ -5,7 +5,7 @@ import { supabase, ClientStatus } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, FileText, Calendar, Camera, Target, FolderOpen, MessageSquare, Map, ClipboardList, TrendingUp } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, Camera, Target, FolderOpen, MessageSquare, Map, ClipboardList, TrendingUp, Crosshair } from 'lucide-react';
 import { ClientDetailHeader } from '@/components/client-detail/ClientDetailHeader';
 import { ClientSummaryCards } from '@/components/client-detail/ClientSummaryCards';
 import { StorySection } from '@/components/client-detail/StorySection';
@@ -13,7 +13,9 @@ import { GoalsChallengesSection } from '@/components/client-detail/GoalsChalleng
 import { FiresFocusSection } from '@/components/client-detail/FiresFocusSection';
 import { MoreLessSummary } from '@/components/client-detail/MoreLessSummary';
 import { RecentActivity } from '@/components/client-detail/RecentActivity';
+import { ActivityFeed } from '@/components/client-detail/ActivityFeed';
 import { AssessmentsSection } from '@/components/client-detail/AssessmentsSection';
+import { PredictionsCard } from '@/components/client-detail/PredictionsCard';
 import { StartEngagementWizard } from '@/components/client-detail/StartEngagementWizard';
 import { DeleteClientModal } from '@/components/clients/DeleteClientModal';
 import { SessionsTab } from '@/components/client-detail/tabs/SessionsTab';
@@ -119,6 +121,7 @@ export default function ClientDetail() {
 
   const tabs = [
     { value: 'overview', label: 'Overview', icon: FileText },
+    { value: 'predictions', label: 'Predictions', icon: Crosshair },
     { value: 'sessions', label: 'Sessions', icon: Calendar },
     { value: 'assignments', label: 'Assignments', icon: ClipboardList },
     { value: 'snapshots', label: 'Snapshots', icon: Camera },
@@ -253,12 +256,17 @@ export default function ClientDetail() {
           />
           <MoreLessSummary markers={markers} onViewAll={() => setActiveTab('moreless')} />
           <RecentActivity activities={recentActivities} />
+          <ActivityFeed clientEmail={client?.email || ''} limit={5} />
+        </TabsContent>
+
+        <TabsContent value="predictions" className="mt-6">
+          <PredictionsCard clientEmail={client?.email || ''} />
         </TabsContent>
 
         <TabsContent value="sessions">
-          <SessionsTab 
-            sessions={sessions} 
-            clientEmail={client?.email || ''} 
+          <SessionsTab
+            sessions={sessions}
+            clientEmail={client?.email || ''}
             engagementId={engagement?.id}
             onRefresh={refetch}
           />

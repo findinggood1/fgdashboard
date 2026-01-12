@@ -11,10 +11,10 @@ import { AddClientModal } from '@/components/clients/AddClientModal';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Smartphone } from 'lucide-react';
-import { 
-  Users, 
-  Calendar, 
-  TrendingUp, 
+import {
+  Users,
+  Calendar,
+  TrendingUp,
   UserPlus,
   MessageSquare,
   ChevronDown,
@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Camera,
   Target,
+  Crosshair,
   Play,
   CheckCircle,
   ClipboardList,
@@ -117,7 +118,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="shadow-soft">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -151,6 +152,18 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.sessionsThisWeek}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-soft">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Active Predictions
+            </CardTitle>
+            <Crosshair className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activePredictions}</div>
           </CardContent>
         </Card>
 
@@ -225,6 +238,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                 <Clock className="h-8 w-8 mb-2 opacity-50" />
                 <p className="text-sm">No recent activity</p>
+                <p className="text-xs mt-1">Activity will appear as your clients complete snapshots and sessions</p>
               </div>
             ) : (() => {
               const limit = 5;

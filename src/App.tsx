@@ -16,8 +16,6 @@ import Events from "./pages/Events";
 import Analytics from "./pages/Analytics";
 import Chat from "./pages/Chat";
 import CoachChat from "./pages/CoachChat";
-import MyMap from "./pages/MyMap";
-import ClientPortalPreview from "./pages/ClientPortalPreview";
 import NotFound from "./pages/NotFound";
 
 // Portal pages
@@ -71,10 +69,6 @@ const App = () => (
               <Route path="/portal/map" element={<PortalMap />} />
               <Route path="/portal/chat" element={<PortalChat />} />
             </Route>
-
-            {/* Coach Tools (accessible to coaches/admins only) */}
-            <Route path="/my/map" element={<MyMap />} />
-            <Route path="/portal-preview" element={<ClientPortalPreview />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

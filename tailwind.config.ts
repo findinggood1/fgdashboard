@@ -69,6 +69,14 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        // FIRES colors
+        fires: {
+          feelings: "#E63946",
+          influence: "#2A9D8F",
+          resilience: "#E9C46A",
+          ethics: "#6A994E",
+          strengths: "#4361EE",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

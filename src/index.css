@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Finding Good Brand Colors */
-    --background: 168 18% 94%; /* #EDF2F2 Off-White */
+    /* Finding Good V2 Brand Colors */
+    --background: 44 87% 94%; /* #FDF6E3 Warm Cream */
     --foreground: 0 0% 20%; /* #333333 Dark Text */
 
     --card: 0 0% 100%;
@@ -16,36 +16,36 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 20%;
 
-    --primary: 191 58% 25%; /* #1B5666 Deep Teal */
-    --primary-foreground: 168 18% 94%;
+    --primary: 168 81% 27%; /* #0D7C66 Teal */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 191 22% 49%; /* #678C95 Warm Gray */
+    --secondary: 168 40% 40%; /* Muted teal */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 168 18% 88%;
-    --muted-foreground: 191 22% 40%;
+    --muted: 44 40% 90%;
+    --muted-foreground: 168 30% 35%;
 
-    --accent: 55 59% 51%; /* #CBC13D Warm Yellow-Green */
+    --accent: 69 64% 55%; /* #BFD641 Lime */
     --accent-foreground: 0 0% 20%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 191 22% 85%;
-    --input: 191 22% 85%;
-    --ring: 191 58% 25%;
+    --border: 44 30% 85%;
+    --input: 44 30% 85%;
+    --ring: 168 81% 27%;
 
     --radius: 0.625rem;
 
     /* Sidebar */
-    --sidebar-background: 191 58% 22%;
-    --sidebar-foreground: 168 18% 94%;
-    --sidebar-primary: 168 18% 94%;
-    --sidebar-primary-foreground: 191 58% 25%;
-    --sidebar-accent: 191 58% 30%;
-    --sidebar-accent-foreground: 168 18% 94%;
-    --sidebar-border: 191 58% 30%;
-    --sidebar-ring: 55 59% 51%;
+    --sidebar-background: 168 81% 22%;
+    --sidebar-foreground: 44 87% 94%;
+    --sidebar-primary: 44 87% 94%;
+    --sidebar-primary-foreground: 168 81% 27%;
+    --sidebar-accent: 168 81% 30%;
+    --sidebar-accent-foreground: 44 87% 94%;
+    --sidebar-border: 168 81% 30%;
+    --sidebar-ring: 69 64% 55%;
 
     /* Custom tokens */
     --success: 160 60% 40%;
@@ -60,42 +60,42 @@
   }
 
   .dark {
-    --background: 191 40% 10%;
-    --foreground: 168 18% 94%;
+    --background: 168 40% 10%;
+    --foreground: 44 87% 94%;
 
-    --card: 191 40% 14%;
-    --card-foreground: 168 18% 94%;
+    --card: 168 40% 14%;
+    --card-foreground: 44 87% 94%;
 
-    --popover: 191 40% 14%;
-    --popover-foreground: 168 18% 94%;
+    --popover: 168 40% 14%;
+    --popover-foreground: 44 87% 94%;
 
-    --primary: 191 58% 45%;
+    --primary: 168 70% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 191 22% 35%;
-    --secondary-foreground: 168 18% 94%;
+    --secondary: 168 30% 30%;
+    --secondary-foreground: 44 87% 94%;
 
-    --muted: 191 30% 20%;
-    --muted-foreground: 191 22% 65%;
+    --muted: 168 30% 20%;
+    --muted-foreground: 168 30% 65%;
 
-    --accent: 55 59% 51%;
+    --accent: 69 64% 50%;
     --accent-foreground: 0 0% 20%;
 
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 191 30% 25%;
-    --input: 191 30% 25%;
-    --ring: 191 58% 45%;
+    --border: 168 30% 25%;
+    --input: 168 30% 25%;
+    --ring: 168 70% 40%;
 
-    --sidebar-background: 191 40% 8%;
-    --sidebar-foreground: 168 18% 94%;
-    --sidebar-primary: 55 59% 51%;
+    --sidebar-background: 168 40% 8%;
+    --sidebar-foreground: 44 87% 94%;
+    --sidebar-primary: 69 64% 50%;
     --sidebar-primary-foreground: 0 0% 20%;
-    --sidebar-accent: 191 40% 18%;
-    --sidebar-accent-foreground: 168 18% 94%;
-    --sidebar-border: 191 30% 25%;
-    --sidebar-ring: 55 59% 51%;
+    --sidebar-accent: 168 40% 18%;
+    --sidebar-accent-foreground: 44 87% 94%;
+    --sidebar-border: 168 30% 25%;
+    --sidebar-ring: 69 64% 50%;
   }
 }
 

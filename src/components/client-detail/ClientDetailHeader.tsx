@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ZoneBadge } from '@/components/clients/ZoneBadge';
 import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
-import { Plus, FileText, Upload, Rocket, Trash2 } from 'lucide-react';
+import { Plus, FileText, Upload, Rocket, Trash2, ExternalLink, Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ClientDetailHeaderProps {
@@ -130,6 +130,30 @@ export function ClientDetailHeader({
             Start Engagement
           </Button>
         )}
+
+        {/* V2 Integration Buttons */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open(
+            `http://localhost:3003?email=${encodeURIComponent(client.email)}`,
+            '_blank'
+          )}
+        >
+          <ExternalLink className="h-4 w-4 mr-1" />
+          View as Client
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => window.open(
+            import.meta.env.DEV ? 'http://localhost:3001' : 'https://snapshot.findinggood.com',
+            '_blank'
+          )}
+        >
+          <Crosshair className="h-4 w-4 mr-1" />
+          New Prediction
+        </Button>
+
         {onDelete && (
           <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto">
             <Trash2 className="h-4 w-4 mr-1" />

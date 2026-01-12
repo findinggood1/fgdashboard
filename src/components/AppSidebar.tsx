@@ -9,9 +9,8 @@ import {
   MessageSquare,
   ChevronLeft,
   LogOut,
-  Map,
   Bot,
-  Eye,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,23 +59,11 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
       label: 'AI Prep',
       show: isCoach 
     },
-    { 
-      to: '/coach/chat', 
-      icon: Bot, 
+    {
+      to: '/coach/chat',
+      icon: Bot,
       label: 'Coach AI Chat',
-      show: isCoach 
-    },
-    { 
-      to: '/my/map', 
-      icon: Map, 
-      label: 'Client Map View',
-      show: isCoach 
-    },
-    { 
-      to: '/portal-preview', 
-      icon: Eye, 
-      label: 'Client Portal View',
-      show: isCoach 
+      show: isCoach
     },
   ].filter(item => item.show);
 
@@ -100,15 +87,15 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg gradient-accent flex items-center justify-center">
-              <span className="text-sm font-serif font-bold text-accent-foreground">FG</span>
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-sm font-serif font-bold text-primary-foreground">FG</span>
             </div>
             <span className="font-serif font-semibold text-sidebar-foreground">Finding Good</span>
           </div>
         )}
         {collapsed && (
-          <div className="w-9 h-9 rounded-lg gradient-accent flex items-center justify-center mx-auto">
-            <span className="text-sm font-serif font-bold text-accent-foreground">FG</span>
+          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center mx-auto">
+            <span className="text-sm font-serif font-bold text-primary-foreground">FG</span>
           </div>
         )}
       </div>
@@ -163,6 +150,20 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
               {isAdmin ? 'Admin' : 'Coach'}
             </span>
           </div>
+        )}
+        {isCoach && (
+          <Button
+            variant="ghost"
+            onClick={() => window.open('http://localhost:3003', '_blank')}
+            className={cn(
+              'w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent min-h-[44px]',
+              collapsed && 'justify-center px-2'
+            )}
+            aria-label="View as Client"
+          >
+            <ExternalLink className="h-5 w-5" />
+            {!collapsed && <span className="ml-3">View as Client</span>}
+          </Button>
         )}
         <Button
           variant="ghost"

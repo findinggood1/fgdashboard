@@ -7,6 +7,7 @@ export interface DashboardStats {
   activeClients: number;
   activeEngagements: number;
   sessionsThisWeek: number;
+  activePredictions: number;
 }
 
 export interface UpcomingSession {
@@ -50,7 +51,7 @@ export interface PortalLoginStats {
 
 export function useDashboard() {
   const { coachData } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({ activeClients: 0, activeEngagements: 0, sessionsThisWeek: 0 });
+  const [stats, setStats] = useState<DashboardStats>({ activeClients: 0, activeEngagements: 0, sessionsThisWeek: 0, activePredictions: 0 });
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [attentionClients, setAttentionClients] = useState<AttentionClient[]>([]);
@@ -150,12 +151,22 @@ export function useDashboard() {
         sessions: weekSessions
       });
 
+      // Fetch active predictions count for coach's clients
+      const { data: predictions, error: predError } = await supabase
+        .from('predictions')
+        .select('id')
+        .in('client_email', clientEmails.length > 0 ? clientEmails : ['_no_match_'])
+        .eq('status', 'active');
+
+      console.log('9b. Active Predictions:', { error: predError, count: predictions?.length || 0 });
+
       setStats({
         activeClients: activeClientEmails.size,
         activeEngagements: activeEngagements.length,
         sessionsThisWeek: weekSessions?.length || 0,
+        activePredictions: predictions?.length || 0,
       });
-      console.log('10. Stats set to:', { activeClients: activeClientEmails.size, activeEngagements: activeEngagements.length, sessionsThisWeek: weekSessions?.length || 0 });
+      console.log('10. Stats set to:', { activeClients: activeClientEmails.size, activeEngagements: activeEngagements.length, sessionsThisWeek: weekSessions?.length || 0, activePredictions: predictions?.length || 0 });
 
       // Fetch upcoming sessions (next 7 days) from scheduled_sessions table
       console.log('11. Fetching upcoming sessions from scheduled_sessions...');
