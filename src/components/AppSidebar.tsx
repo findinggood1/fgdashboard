@@ -29,41 +29,48 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
   const isCoach = userRole === 'coach' || userRole === 'admin';
 
   const navItems = [
-    { 
-      to: '/dashboard', 
-      icon: LayoutDashboard, 
+    {
+      to: '/dashboard',
+      icon: LayoutDashboard,
       label: 'Dashboard',
-      show: true 
+      show: true
     },
-    { 
-      to: '/clients', 
-      icon: Users, 
+    {
+      to: '/clients',
+      icon: Users,
       label: 'Clients',
-      show: isCoach 
+      show: isCoach
     },
-    { 
-      to: '/events', 
-      icon: Calendar, 
+    {
+      to: '/events',
+      icon: Calendar,
       label: 'Events',
-      show: isAdmin 
+      show: isAdmin
     },
-    { 
-      to: '/analytics', 
-      icon: BarChart3, 
+    {
+      to: '/analytics',
+      icon: BarChart3,
       label: 'Analytics',
-      show: isAdmin 
+      show: isAdmin
     },
-    { 
-      to: '/chat', 
-      icon: MessageSquare, 
+    {
+      to: '/chat',
+      icon: MessageSquare,
       label: 'AI Prep',
-      show: isCoach 
+      show: isCoach
     },
     {
       to: '/coach/chat',
       icon: Bot,
       label: 'Coach AI Chat',
       show: isCoach
+    },
+    {
+      to: 'http://localhost:3003',
+      icon: ExternalLink,
+      label: 'View as Client',
+      show: isCoach,
+      external: true
     },
   ].filter(item => item.show);
 
@@ -119,9 +126,30 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.to || 
-            (item.to !== '/dashboard' && location.pathname.startsWith(item.to));
-          
+          const isExternal = 'external' in item && item.external;
+          const isActive = !isExternal && (
+            location.pathname === item.to ||
+            (item.to !== '/dashboard' && location.pathname.startsWith(item.to))
+          );
+
+          if (isExternal) {
+            return (
+              <button
+                key={item.to}
+                onClick={() => {
+                  window.open(item.to, '_blank');
+                  handleNavClick();
+                }}
+                className={cn(
+                  'sidebar-item min-h-[44px] w-full text-sidebar-foreground/70 hover:text-sidebar-foreground'
+                )}
+              >
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            );
+          }
+
           return (
             <NavLink
               key={item.to}
@@ -150,20 +178,6 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }: AppSidebarProps)
               {isAdmin ? 'Admin' : 'Coach'}
             </span>
           </div>
-        )}
-        {isCoach && (
-          <Button
-            variant="ghost"
-            onClick={() => window.open('http://localhost:3003', '_blank')}
-            className={cn(
-              'w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent min-h-[44px]',
-              collapsed && 'justify-center px-2'
-            )}
-            aria-label="View as Client"
-          >
-            <ExternalLink className="h-5 w-5" />
-            {!collapsed && <span className="ml-3">View as Client</span>}
-          </Button>
         )}
         <Button
           variant="ghost"
