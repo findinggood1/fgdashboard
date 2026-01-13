@@ -5,13 +5,12 @@ import { supabase, ClientStatus } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, FileText, Calendar, Camera, Target, FolderOpen, MessageSquare, Map, ClipboardList, TrendingUp, Crosshair } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, MessageSquare, Map, ClipboardList, Crosshair, Star, CheckCircle } from 'lucide-react';
 import { ClientDetailHeader } from '@/components/client-detail/ClientDetailHeader';
 import { ClientSummaryCards } from '@/components/client-detail/ClientSummaryCards';
 import { StorySection } from '@/components/client-detail/StorySection';
 import { GoalsChallengesSection } from '@/components/client-detail/GoalsChallengesSection';
 import { FiresFocusSection } from '@/components/client-detail/FiresFocusSection';
-import { MoreLessSummary } from '@/components/client-detail/MoreLessSummary';
 import { RecentActivity } from '@/components/client-detail/RecentActivity';
 import { ActivityFeed } from '@/components/client-detail/ActivityFeed';
 import { AssessmentsSection } from '@/components/client-detail/AssessmentsSection';
@@ -19,10 +18,8 @@ import { PredictionsCard } from '@/components/client-detail/PredictionsCard';
 import { StartEngagementWizard } from '@/components/client-detail/StartEngagementWizard';
 import { DeleteClientModal } from '@/components/clients/DeleteClientModal';
 import { SessionsTab } from '@/components/client-detail/tabs/SessionsTab';
-import { SnapshotsTab } from '@/components/client-detail/tabs/SnapshotsTab';
 import { ImpactTab } from '@/components/client-detail/tabs/ImpactTab';
-import { FilesTab } from '@/components/client-detail/tabs/FilesTab';
-import { MoreLessTab } from '@/components/client-detail/tabs/MoreLessTab';
+import { PrioritiesTab } from '@/components/client-detail/tabs/PrioritiesTab';
 import { NotesTab } from '@/components/client-detail/tabs/NotesTab';
 import { NarrativeMapTab } from '@/components/client-detail/tabs/NarrativeMapTab';
 import { AssignmentsTab } from '@/components/client-detail/tabs/AssignmentsTab';
@@ -48,7 +45,7 @@ export default function ClientDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { coachData } = useAuth();
-  const { client, engagement, snapshots, impactVerifications, sessions, assessments, markers, notes, memos, assignments, files, nextScheduledSession, loading, updateEngagement, refetch } = useClientDetail(email);
+  const { client, engagement, snapshots, impactVerifications, sessions, assessments, notes, memos, assignments, nextScheduledSession, loading, updateEngagement, refetch } = useClientDetail(email);
   const [activeTab, setActiveTab] = useState('overview');
   const [engagementWizardOpen, setEngagementWizardOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -121,13 +118,11 @@ export default function ClientDetail() {
 
   const tabs = [
     { value: 'overview', label: 'Overview', icon: FileText },
-    { value: 'predictions', label: 'Predictions', icon: Crosshair },
     { value: 'sessions', label: 'Sessions', icon: Calendar },
     { value: 'assignments', label: 'Assignments', icon: ClipboardList },
-    { value: 'snapshots', label: 'Snapshots', icon: Camera },
-    { value: 'impact', label: 'Impact', icon: Target },
-    { value: 'files', label: 'Files', icon: FolderOpen },
-    { value: 'moreless', label: 'More/Less', icon: TrendingUp },
+    { value: 'predictions', label: 'Predictions', icon: Crosshair },
+    { value: 'proof', label: 'Proof', icon: CheckCircle },
+    { value: 'priorities', label: 'Priorities', icon: Star },
     { value: 'notes', label: 'Notes', icon: MessageSquare },
     { value: 'narrative-map', label: 'Map', icon: Map },
   ];
@@ -188,7 +183,6 @@ export default function ClientDetail() {
         latestSnapshot={latestSnapshot}
         onAddNote={() => handleAction('Add Note')}
         onAddSession={() => setAddSessionModalOpen(true)}
-        onUploadFile={() => setActiveTab('files')}
         onStartEngagement={() => setEngagementWizardOpen(true)}
         onStatusChange={handleStatusChange}
         onDelete={() => setDeleteModalOpen(true)}
@@ -247,14 +241,12 @@ export default function ClientDetail() {
           <StorySection engagement={engagement} onUpdate={updateEngagement} onStartEngagement={() => setEngagementWizardOpen(true)} />
           <GoalsChallengesSection engagement={engagement} onUpdate={updateEngagement} />
           <FiresFocusSection engagement={engagement} latestSnapshot={latestSnapshot} onUpdate={updateEngagement} />
-          <AssessmentsSection 
-            assessments={assessments} 
-            clientEmail={client?.email || ''} 
-            engagementId={engagement?.id} 
+          <AssessmentsSection
+            assessments={assessments}
+            clientEmail={client?.email || ''}
+            engagementId={engagement?.id}
             onRefresh={refetch}
-            onUploadFile={() => setActiveTab('files')}
           />
-          <MoreLessSummary markers={markers} onViewAll={() => setActiveTab('moreless')} />
           <RecentActivity activities={recentActivities} />
           <ActivityFeed clientEmail={client?.email || ''} limit={5} />
         </TabsContent>
@@ -273,30 +265,22 @@ export default function ClientDetail() {
         </TabsContent>
         
         <TabsContent value="assignments">
-          <AssignmentsTab 
-            assignments={assignments} 
-            clientEmail={client?.email || ''} 
+          <AssignmentsTab
+            assignments={assignments}
+            clientEmail={client?.email || ''}
             engagementId={engagement?.id}
             onRefresh={refetch}
           />
         </TabsContent>
-        
-        <TabsContent value="snapshots">
-          <SnapshotsTab snapshots={snapshots} />
-        </TabsContent>
-        
-        <TabsContent value="impact">
+
+        <TabsContent value="proof">
           <ImpactTab impacts={impactVerifications} />
         </TabsContent>
-        
-        <TabsContent value="files">
-          <FilesTab files={files} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} />
+
+        <TabsContent value="priorities">
+          <PrioritiesTab impacts={impactVerifications} />
         </TabsContent>
-        
-        <TabsContent value="moreless">
-          <MoreLessTab markers={markers} clientEmail={client?.email || ''} engagementId={engagement?.id} onRefresh={refetch} />
-        </TabsContent>
-        
+
         <TabsContent value="notes">
           <NotesTab notes={notes} memos={memos} sessions={sessions} clientEmail={client?.email || ''} onRefresh={refetch} />
         </TabsContent>

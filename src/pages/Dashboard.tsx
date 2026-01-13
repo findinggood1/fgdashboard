@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [showAddClient, setShowAddClient] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
+  const [sessionsExpanded, setSessionsExpanded] = useState(false);
 
   const isAdmin = userRole === 'admin';
   const today = new Date();
@@ -205,25 +206,55 @@ export default function Dashboard() {
                 <Calendar className="h-8 w-8 mb-2 opacity-50" />
                 <p className="text-sm">No upcoming sessions</p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {upcomingSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                    onClick={() => navigate(`/clients/${encodeURIComponent(session.clientEmail)}`)}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{session.clientName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(session.sessionDate), 'EEE, MMM d \'at\' h:mm a')}{session.sessionType ? ` • ${session.sessionType}` : ''}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            ) : (() => {
+              const limit = 2;
+              const items = sessionsExpanded ? upcomingSessions : upcomingSessions.slice(0, limit);
+              const hasMore = upcomingSessions.length > limit;
+
+              return (
+                <>
+                  <div className="space-y-3">
+                    {items.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                        onClick={() => navigate(`/clients/${encodeURIComponent(session.clientEmail)}`)}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{session.clientName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(session.sessionDate), 'EEE, MMM d \'at\' h:mm a')}{session.sessionType ? ` • ${session.sessionType}` : ''}
+                          </p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {hasMore && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3 text-muted-foreground hover:text-foreground"
+                      onClick={() => setSessionsExpanded((v) => !v)}
+                    >
+                      {sessionsExpanded ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          See more ({upcomingSessions.length - limit} more)
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
 
@@ -241,7 +272,7 @@ export default function Dashboard() {
                 <p className="text-xs mt-1">Activity will appear as your clients complete snapshots and sessions</p>
               </div>
             ) : (() => {
-              const limit = 5;
+              const limit = 2;
               const items = activityExpanded ? activityFeed : activityFeed.slice(0, limit);
               const hasMore = activityFeed.length > limit;
 
