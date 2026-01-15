@@ -104,13 +104,13 @@ export function usePortalDataForClient(clientEmail: string | undefined) {
     enabled: !!clientEmail,
   });
 
-  // Fetch impact entries from 'impact_verifications' table
+  // Fetch impact entries from 'priorities' table
   const impactQuery = useQuery({
     queryKey: ['portal-impact', clientEmail],
     queryFn: async () => {
       if (!clientEmail) return [];
       const { data, error } = await supabase
-        .from('impact_verifications')
+        .from('priorities')
         .select('id, created_at, type, timeframe, intensity, fires_focus, responses, integrity_line, ownership_signal, confidence_signal, clarity_signal, interpretation, evidence')
         .eq('client_email', clientEmail)
         .order('created_at', { ascending: false });

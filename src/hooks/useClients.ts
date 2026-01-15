@@ -52,7 +52,7 @@ export function useClients() {
 
       // Fetch impact verifications
       const { data: impacts, error: impactsError } = await supabase
-        .from('impact_verifications')
+        .from('priorities')
         .select('client_email, created_at')
         .in('client_email', clientEmails)
         .order('created_at', { ascending: false });

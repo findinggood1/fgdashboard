@@ -481,7 +481,7 @@ export type Database = {
             foreignKeyName: "coaching_notes_related_verification_id_fkey"
             columns: ["related_verification_id"]
             isOneToOne: false
-            referencedRelation: "impact_verifications"
+            referencedRelation: "priorities"
             referencedColumns: ["id"]
           },
         ]
@@ -531,7 +531,7 @@ export type Database = {
         }
         Relationships: []
       }
-      impact_verifications: {
+      priorities: {
         Row: {
           alignment: Json | null
           clarity_signal: string | null

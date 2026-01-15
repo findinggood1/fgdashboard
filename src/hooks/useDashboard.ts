@@ -221,7 +221,7 @@ export function useDashboard() {
 
       setUpcomingSessions(upcomingWithNames);
 
-      // Build activity feed from snapshots and impact_verifications
+      // Build activity feed from snapshots and priorities
       // JOIN through clients table to filter by coach assignment
       console.log('13. Fetching recent snapshots...');
       
@@ -238,7 +238,7 @@ export function useDashboard() {
       // For impact verifications
       console.log('15. Fetching recent impact verifications...');
       const { data: recentImpacts, error: impactError } = await supabase
-        .from('impact_verifications')
+        .from('priorities')
         .select('id, client_email, created_at, integrity_line')
         .in('client_email', clientEmails.length > 0 ? clientEmails : ['_no_match_'])
         .order('created_at', { ascending: false })

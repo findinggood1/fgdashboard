@@ -212,7 +212,7 @@ export function useClientDetail(email: string | undefined) {
         supabase.from('clients').select('*').eq('email', decodedEmail).maybeSingle(),
         supabase.from('coaching_engagements').select('*').eq('client_email', decodedEmail).eq('status', 'active').maybeSingle(),
         supabase.from('snapshots').select('*').eq('client_email', decodedEmail).order('created_at', { ascending: false }),
-        supabase.from('impact_verifications').select('*').eq('client_email', decodedEmail).order('created_at', { ascending: false }),
+        supabase.from('priorities').select('*').eq('client_email', decodedEmail).order('created_at', { ascending: false }),
         supabase.from('session_transcripts').select('*').eq('client_email', decodedEmail).order('session_date', { ascending: false }),
         supabase.from('client_assessments').select('*').eq('client_email', decodedEmail).order('assessment_date', { ascending: false }),
         supabase.from('more_less_markers').select('*').eq('client_email', decodedEmail).eq('is_active', true).order('created_at', { ascending: false }),

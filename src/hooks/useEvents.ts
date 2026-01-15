@@ -39,13 +39,13 @@ export function useEvents() {
 
       // Fetch impact verification counts
       const { data: impactCounts, error: impactError } = await supabase
-        .from('impact_verifications')
+        .from('priorities')
         .select('id');
 
       if (impactError) throw impactError;
 
       // For now, we'll count total entries across all events
-      // In a real scenario, you'd have event_code on snapshots/impact_verifications
+      // In a real scenario, you'd have event_code on snapshots/priorities
       const totalEntriesCount = (snapshotCounts?.length || 0) + (impactCounts?.length || 0);
 
       // Calculate entries per event (placeholder - would need event_code in actual tables)

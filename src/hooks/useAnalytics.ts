@@ -162,7 +162,7 @@ export function useAnalytics() {
         .in('client_email', clientEmails.length > 0 ? clientEmails : ['']);
 
       const { data: impacts } = await supabase
-        .from('impact_verifications')
+        .from('priorities')
         .select('id')
         .in('client_email', clientEmails.length > 0 ? clientEmails : ['']);
 
