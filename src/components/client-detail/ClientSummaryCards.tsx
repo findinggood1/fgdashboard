@@ -14,17 +14,42 @@ export function ClientSummaryCards({ latestSnapshot, lastActivity, nextScheduled
   const formatDate = (date: string) => format(new Date(date), 'MMM d, yyyy');
   const formatDateTime = (date: string) => format(new Date(date), 'MMM d @ h:mm a');
 
-  // Get zone breakdown to find owning highlight
+  // Get zone data from zone_scores (the field that actually has data)
+  const zoneScores = (latestSnapshot as any)?.zone_scores as Record<string, string> | null;
+
+  // Calculate overall zone from zone_scores (majority wins)
+  const getOverallZone = () => {
+    if (!zoneScores) return null;
+    const zones = Object.values(zoneScores);
+    if (zones.length === 0) return null;
+    const counts: Record<string, number> = {};
+    zones.forEach(zone => {
+      if (zone) counts[zone] = (counts[zone] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  };
+
+  // Get owning highlight from zone_scores
   const getOwningHighlight = () => {
-    if (!latestSnapshot?.zone_breakdown) return null;
-    const breakdown = latestSnapshot.zone_breakdown as Record<string, string>;
-    const owningCategories = Object.entries(breakdown)
+    if (!zoneScores) return null;
+    const owningCategories = Object.entries(zoneScores)
       .filter(([_, zone]) => zone?.toLowerCase() === 'owning')
       .map(([category]) => category);
     return owningCategories[0] || null;
   };
 
+  // Get growth opportunity from zone_scores (elements NOT in Owning zone)
+  const getGrowthOpportunity = () => {
+    if (!zoneScores) return null;
+    const nonOwningCategories = Object.entries(zoneScores)
+      .filter(([_, zone]) => zone?.toLowerCase() !== 'owning')
+      .map(([category]) => category);
+    return nonOwningCategories[0] || null;
+  };
+
+  const overallZone = getOverallZone();
   const owningHighlight = getOwningHighlight();
+  const growthOpportunity = latestSnapshot?.growth_opportunity_category || getGrowthOpportunity();
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -38,7 +63,7 @@ export function ClientSummaryCards({ latestSnapshot, lastActivity, nextScheduled
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
-            <ZoneBadge zone={latestSnapshot?.overall_zone || null} />
+            <ZoneBadge zone={overallZone} />
           </div>
           {latestSnapshot && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -57,10 +82,10 @@ export function ClientSummaryCards({ latestSnapshot, lastActivity, nextScheduled
           <TrendingUp className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          {latestSnapshot?.growth_opportunity_category ? (
+          {growthOpportunity ? (
             <>
               <div className="text-lg font-semibold capitalize">
-                {latestSnapshot.growth_opportunity_category}
+                {growthOpportunity}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Biggest opportunity for growth
